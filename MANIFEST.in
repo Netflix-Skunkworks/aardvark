@@ -1,0 +1,3 @@
+include setup.py README.md MANIFEST.in LICENSE
+recursive-include aardvark *.js
+global-exclude *~
