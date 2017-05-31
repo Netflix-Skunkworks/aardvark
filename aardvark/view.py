@@ -3,6 +3,7 @@ from flask import abort, jsonify
 from flask import Blueprint
 from flask_restful import Api, Resource, reqparse
 from flask import Flask
+import sqlalchemy as sa
 import better_exceptions  # noqa
 
 
@@ -125,7 +126,8 @@ class RoleSearch(Resource):
                 query = query.filter(AWSIAMObject.arn.ilike('%' + phrase + '%'))
 
             if arns:
-                query = query.filter(AWSIAMObject.arn.in_(arns))
+                query = query.filter(
+                    sa.func.lower(AWSIAMObject.arn).in_([arn.lower() for arn in arns]))
 
             if regex:
                 query = query.filter(AWSIAMObject.arn.regexp(regex))
