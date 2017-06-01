@@ -11,6 +11,8 @@ Aardvark is a multi-account AWS IAM Access Advisor API
 
 The phantomjs executable must be downloaded from http://phantomjs.org/download.html
 
+**Note**: Aardvark requires at least phantomjs 2.1.1.  We've seen odd behavior running with older versions.
+
 ## Configure Aardvark
 
 The Aardvark config wizard will guide you through the setup.
@@ -20,6 +22,12 @@ The Aardvark config wizard will guide you through the setup.
 - Location of the PhantomJS executable.
 ```
     aardvark config
+```
+
+## Create the DB tables
+
+```
+    aardvark create_db
 ```
 
 ## IAM Permissions:
