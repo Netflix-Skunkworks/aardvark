@@ -1,11 +1,13 @@
-from aardvark import db
 import datetime
+
 from flask import current_app
 from sqlalchemy import BigInteger, Column, Integer, Text, TIMESTAMP
 import sqlalchemy.exc
-from aardvark.utils.sqla_regex import String
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import ForeignKey
+
+from aardvark import db
+from aardvark.utils.sqla_regex import String
 
 
 class AWSIAMObject(db.Model):
