@@ -206,11 +206,10 @@ def _prep_accounts(account_names):
     current_app.logger.info('getting bucket {}'.format(
                             current_app.config.get('SWAG_BUCKET')))
 
-    service = {'services': {current_app.config.get('SWAG_FILTER') or
-               'security_monkey': {'enabled': True}}, 'ours': True}
+    swag_filter = current_app.config.get('SWAG_FILTER') or {'ours': True}
 
     accounts = get_all_accounts(bucket=current_app.config.get('SWAG_BUCKET'),
-                                **service).get('accounts')
+                                **swag_filter).get('accounts')
 
     if account_names == 'all':
         return [Bunch(account) for account in accounts]
