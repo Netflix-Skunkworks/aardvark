@@ -1,6 +1,7 @@
 import json
 import os
 import Queue
+import re
 import threading
 
 import better_exceptions # noqa
@@ -8,6 +9,7 @@ from bunch import Bunch
 from distutils.spawn import find_executable
 from flask import current_app
 from flask_script import Manager, Command, Option
+from swag_client import InvalidSWAGDataException
 from swag_client.swag import get_all_accounts
 
 from aardvark import create_app, db
@@ -185,8 +187,8 @@ def update(accounts, arns):
         current_app.logger.warn('Greater than 6 threads seems to cause problems')
 
     QUEUE_LOCK.acquire()
-    for account in accounts:
-        ACCOUNT_QUEUE.put((account.metadata['account_number'], role_name, arns))
+    for account_number in accounts:
+        ACCOUNT_QUEUE.put((account_number, role_name, arns))
     QUEUE_LOCK.release()
 
     threads = []
@@ -204,27 +206,42 @@ def _prep_accounts(account_names):
     """
     Convert CLI provided account names into list of accounts from SWAG.
     Considers account aliases as well as account names.
-    Returns a set of Bunch'd accounts.
+    Returns a list of account numbers
     """
-    current_app.logger.info('getting bucket {}'.format(
-                            current_app.config.get('SWAG_BUCKET')))
+    matching_accounts = list()
+    account_names = account_names.split(',')
+    account_names = {name.lower() for name in account_names}
 
-    swag_filter = current_app.config.get('SWAG_FILTER') or {'ours': True}
+    # create a new copy of the account_names list so we can remove accounts as needed
+    for account in list(account_names):
+        if re.match('\d{12}', account):
+            account_names.remove(account)
+            matching_accounts.append(account)
 
-    accounts = get_all_accounts(bucket=current_app.config.get('SWAG_BUCKET'),
-                                **swag_filter).get('accounts')
+    if not account_names:
+        return matching_accounts
+
+    accounts = {}
+
+    try:
+        current_app.logger.info('getting bucket {}'.format(
+                                current_app.config.get('SWAG_BUCKET')))
+
+        swag_filter = current_app.config.get('SWAG_FILTER') or {'ours': True}
+
+        accounts = get_all_accounts(bucket=current_app.config.get('SWAG_BUCKET'),
+                                    **swag_filter).get('accounts')
+
+    except (KeyError, InvalidSWAGDataException, Exception) as e:
+        current_app.logger.error('Account names passed but SWAG not configured or unavailable: {}'.format(e))
 
     if account_names == 'all':
-        return [Bunch(account) for account in accounts]
+        return [account['metadata'].get('account_number', None) for account in accounts]
 
     lookup = {account['name']: Bunch(account) for account in accounts}
     for account in accounts:
         for alias in account['alias']:
             lookup[alias] = Bunch(account)
-
-    matching_accounts = list()
-    account_names = account_names.split(',')
-    account_names = {name.lower() for name in account_names}
 
     for name in account_names:
         if name not in lookup:
@@ -232,7 +249,9 @@ def _prep_accounts(account_names):
                                     % name)
             continue
 
-        matching_accounts.append(lookup[name])
+        account_number = lookup[name]['metadata'].get('account_number', None)
+        if account_number:
+            matching_accounts.append(account_number)
 
     return matching_accounts
 

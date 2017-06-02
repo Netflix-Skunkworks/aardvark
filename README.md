@@ -52,12 +52,17 @@ iam:listroles
 So if you are monitoring `n` accounts, you will always need `n+1` roles. (`n` AardvarkRoles and `1` AardvarkInstanceProfile).
 
 ## Gather Access Advisor Data
+Aardvark can use [SWAG](https://github.com/Netflix-Skunkworks/swag-client) to look up accounts, so you can run against all with:
 
     aardvark update
 
-or
+or by account name/tag with:
 
     aardvark update -a dev,test,prod
+    
+If you don't have SWAG you can pass comma separated account numbers:
+
+    aardvark update -a 123456789012,210987654321
 
 ## API
 Swagger is available for the API at `<Aardvark_Host>/apidocs/#!`.
