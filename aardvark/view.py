@@ -1,10 +1,12 @@
-from aardvark.model import AWSIAMObject
+import better_exceptions  # noqa
+
 from flask import abort, jsonify
 from flask import Blueprint
 from flask_restful import Api, Resource, reqparse
 from flask import Flask
 import sqlalchemy as sa
-import better_exceptions  # noqa
+
+from aardvark.model import AWSIAMObject
 
 
 mod = Blueprint('advisor', __name__)

@@ -1,10 +1,11 @@
-from cloudaux.aws.iam import list_roles
-from cloudaux.aws.sts import boto3_cached_conn
-import requests
 import json
 import os
 import tempfile
 import urllib
+
+from cloudaux.aws.iam import list_roles
+from cloudaux.aws.sts import boto3_cached_conn
+import requests
 import subprocess32
 from subprocess32 import CalledProcessError
 

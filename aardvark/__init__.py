@@ -1,10 +1,11 @@
+import os.path
+from logging import DEBUG, Formatter, StreamHandler
+from logging.config import dictConfig
+import sys
+
 from flask_sqlalchemy import SQLAlchemy
 from flask import Flask
 from flasgger import Swagger
-from logging import DEBUG, Formatter, StreamHandler
-from logging.config import dictConfig
-import os.path
-import sys
 
 db = SQLAlchemy()
 
