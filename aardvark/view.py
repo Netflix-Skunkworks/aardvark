@@ -192,7 +192,7 @@ class RoleSearch(Resource):
             values[item.arn] = item_values
 
         if combine and items.total > len(items.items):
-            return jsonify(dict(Error="Please specify a count of at least {}.".format(items.total)))
+            abort(400, "Error: Please specify a count of at least {}.".format(items.total))
         elif combine:
             return self.combine(values)
 
