@@ -137,7 +137,7 @@ class RoleSearch(Resource):
         """
         self.reqparse.add_argument('page', type=int, default=1)
         self.reqparse.add_argument('count', type=int, default=30)
-        self.reqparse.add_argument('combine', type=bool, default=False)
+        self.reqparse.add_argument('combine', type=str, default='false')
         self.reqparse.add_argument('phrase', default=None)
         self.reqparse.add_argument('regex', default=None)
         self.reqparse.add_argument('arn', default=None, action='append')
@@ -148,7 +148,8 @@ class RoleSearch(Resource):
 
         page = args.pop('page')
         count = args.pop('count')
-        combine = args.pop('combine', False)
+        combine = args.pop('combine', 'false')
+        combine = combine.lower() == 'true'
         phrase = args.pop('phrase', '')
         arns = args.pop('arn', [])
         regex = args.pop('regex', '')
