@@ -37,9 +37,10 @@ class RoleSearch(Resource):
                 if namespace not in usage:
                     usage[namespace] = service
                 else:
+                    count_entities = usage[namespace]['totalAuthenticatedEntities'] + service['totalAuthenticatedEntities']
                     if last_authenticated > usage[namespace]['lastAuthenticated']:
                         usage[namespace] = service
-                        del usage[namespace]['totalAuthenticatedEntities']
+                    usage[namespace]['totalAuthenticatedEntities'] = count_entities
 
         for namespace, service in usage.items():
             last_authenticated = service['lastAuthenticated']
