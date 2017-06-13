@@ -1,4 +1,6 @@
 import better_exceptions  # noqa
+import datetime
+import json
 
 from flask import abort, jsonify
 from flask import Blueprint
@@ -21,6 +23,31 @@ class RoleSearch(Resource):
     def __init__(self):
         super(RoleSearch, self).__init__()
         self.reqparse = reqparse.RequestParser()
+
+    def combine(self, aa):
+        del aa['count']
+        del aa['page']
+        del aa['total']
+
+        usage = dict()
+        for arn, services in aa.items():
+            for service in services:
+                namespace = service.get('serviceNamespace')
+                last_authenticated = service.get('lastAuthenticated')
+                if namespace not in usage:
+                    usage[namespace] = service
+                else:
+                    if last_authenticated > usage[namespace]['lastAuthenticated']:
+                        usage[namespace] = service
+                        del usage[namespace]['totalAuthenticatedEntities']
+
+        for namespace, service in usage.items():
+            last_authenticated = service['lastAuthenticated']
+            dt_last_authenticated = datetime.datetime.fromtimestamp(last_authenticated / 1e3)
+            dt_starting = datetime.datetime.utcnow() - datetime.timedelta(days=90)
+            usage[namespace]['USED_LAST_90_DAYS'] = dt_last_authenticated > dt_starting
+
+        return jsonify(usage)
 
     # undocumented convenience pass-through so we can query directly from browser
     @app.route('/advisors')
@@ -47,6 +74,11 @@ class RoleSearch(Resource):
             in: query
             type: integer
             description: specifies how many results should be return per page
+            required: false
+          - name: combine
+            in: query
+            type: bool
+            description: combine access advisor data for all results [Default False]
             required: false
           - name: query
             in: body
@@ -105,6 +137,7 @@ class RoleSearch(Resource):
         """
         self.reqparse.add_argument('page', type=int, default=1)
         self.reqparse.add_argument('count', type=int, default=30)
+        self.reqparse.add_argument('combine', type=bool, default=False)
         self.reqparse.add_argument('phrase', default=None)
         self.reqparse.add_argument('regex', default=None)
         self.reqparse.add_argument('arn', default=None, action='append')
@@ -115,6 +148,7 @@ class RoleSearch(Resource):
 
         page = args.pop('page')
         count = args.pop('count')
+        combine = args.pop('combine', False)
         phrase = args.pop('phrase', '')
         arns = args.pop('arn', [])
         regex = args.pop('regex', '')
@@ -154,6 +188,9 @@ class RoleSearch(Resource):
                     lastUpdated=item.lastUpdated
                 ))
             values[item.arn] = item_values
+
+        if combine:
+            return self.combine(values)
 
         return jsonify(values)
 
