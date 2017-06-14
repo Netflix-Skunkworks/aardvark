@@ -78,7 +78,7 @@ class RoleSearch(Resource):
             required: false
           - name: combine
             in: query
-            type: bool
+            type: boolean
             description: combine access advisor data for all results [Default False]
             required: false
           - name: query
