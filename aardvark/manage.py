@@ -219,7 +219,7 @@ def _prep_accounts(account_names):
     """
     matching_accounts = list()
     account_names = account_names.split(',')
-    account_names = {name.lower() for name in account_names}
+    account_names = {name.lower().strip() for name in account_names}
 
     # create a new copy of the account_names list so we can remove accounts as needed
     for account in list(account_names):
@@ -244,7 +244,7 @@ def _prep_accounts(account_names):
     except (KeyError, InvalidSWAGDataException, Exception) as e:
         current_app.logger.error('Account names passed but SWAG not configured or unavailable: {}'.format(e))
 
-    if account_names == 'all':
+    if 'all' in account_names:
         return [account['metadata'].get('account_number', None) for account in accounts]
 
     lookup = {account['name']: Bunch(account) for account in accounts}
