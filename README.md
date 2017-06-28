@@ -18,8 +18,10 @@ cd aardvark
 python setup.py develop
 ```
 
-The phantomjs executable must be downloaded from http://phantomjs.org/download.html
-
+### Known Dependencies
+ - [PhantomJS*](http://phantomjs.org/download.html)
+ - libpq-dev
+ 
 **Note**: Aardvark requires at least phantomjs 2.1.1.  We've seen odd behavior running with older versions.
 
 ## Configure Aardvark
