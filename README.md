@@ -1,5 +1,8 @@
 Aardvark
 ========
+[![NetflixOSS Lifecycle](https://img.shields.io/osslifecycle/Netflix/osstracker.svg)]()
+[![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/netflix-repokid)
+
 <img align="center" alt="Aardvark Logo" src="docs/images/aardvark_logo.jpg" width="10%" display="block">
 
 Aardvark is a multi-account AWS IAM Access Advisor API (and caching layer).
