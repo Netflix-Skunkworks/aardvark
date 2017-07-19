@@ -57,8 +57,23 @@ class AccountToUpdate(object):
         class property ARN filter
         :return: list of role ARNs
         """
-        roles = list_roles(**self.conn_details)
-        account_arns = set([role['Arn'] for role in roles])
+
+        client = boto3_cached_conn(
+            'iam', service_type='client', **self.conn_details)
+
+        account_arns = set(
+            [role['Arn'] for role in list_roles(**self.conn_details)]
+            + [user['Arn'] for user in list_users(**self.conn_details)]
+        )
+
+        for page in client.get_paginator('list_policies').paginate(Scope='Local'):
+            for policy in page['Policies']:
+                account_arns.add(policy['Arn'])
+
+        for page in client.get_paginator('list_groups').paginate():
+            for group in page['Groups']:
+                account_arns.add(group['Arn'])
+
         result_arns = set()
         for arn in self.arn_list:
             if arn.lower() == 'all':
