@@ -3,7 +3,7 @@ import os
 import tempfile
 import urllib
 
-from cloudaux.aws.iam import list_roles
+from cloudaux.aws.iam import list_roles, list_users
 from cloudaux.aws.sts import boto3_cached_conn
 import requests
 import subprocess32
@@ -61,10 +61,13 @@ class AccountToUpdate(object):
         client = boto3_cached_conn(
             'iam', service_type='client', **self.conn_details)
 
-        account_arns = set(
-            [role['Arn'] for role in list_roles(**self.conn_details)]
-            + [user['Arn'] for user in list_users(**self.conn_details)]
-        )
+        account_arns = set()
+
+        for role in list_roles(**self.conn_details):
+            account_arns.add(role['Arn'])
+
+        for user in list_users(**self.conn_details):
+            account_arns.add(user['Arn'])
 
         for page in client.get_paginator('list_policies').paginate(Scope='Local'):
             for policy in page['Policies']:
