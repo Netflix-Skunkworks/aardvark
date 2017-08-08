@@ -67,6 +67,9 @@ iam:GenerateServiceLastAccessedDetails
 iam:GetServiceLastAccessedDetails
 iam:listrolepolicies
 iam:listroles
+iam:ListUsers
+iam:ListPolicies
+iam:ListGroups
 ```
 
 So if you are monitoring `n` accounts, you will always need `n+1` roles. (`n` AardvarkRoles and `1` AardvarkInstanceProfile).
