@@ -127,9 +127,6 @@ to complete.
 The `regex` query is only supported in Postgres (natively) and SQLite (via some magic courtesy of Xion
   in the `sqla_regex` file).
 
-### Access Advisor Data
-Aardvark currently only supports gathering access advisor data for IAM Roles.  AWS provides data for other item types like IAM Users, IAM Groups, and Managed Policies.  Aardvark does not support these other items.  It would be easy enough to add support if you would like to contribute.
-
 ### TLS
 We recommend enabling TLS for any service. Instructions for setting up TLS are out of scope for this document.
 
