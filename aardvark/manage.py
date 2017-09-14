@@ -9,7 +9,7 @@ from bunch import Bunch
 from distutils.spawn import find_executable
 from flask import current_app
 from flask_script import Manager, Command, Option
-from swag_client import InvalidSWAGDataException
+from swag_client.exceptions import InvalidSWAGDataException
 from swag_client.swag import get_all_accounts
 
 from aardvark import create_app, db
