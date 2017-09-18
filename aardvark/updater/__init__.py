@@ -57,7 +57,6 @@ class AccountToUpdate(object):
         class property ARN filter
         :return: list of role ARNs
         """
-
         client = boto3_cached_conn(
             'iam', service_type='client', **self.conn_details)
 
