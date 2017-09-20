@@ -26,7 +26,7 @@ with open(os.path.join(ROOT, "aardvark", "__about__.py")) as f:
 
 install_requires = [
     'requests>=2.9.1',
-    'better_exceptions==0.1.7',
+    'better_exceptions==0.1.8',
     'Bunch==1.0.1',
     'Flask-SQLAlchemy==2.2',
     'cloudaux>=1.2.0',
