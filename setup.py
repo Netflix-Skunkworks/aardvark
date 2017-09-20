@@ -31,7 +31,7 @@ install_requires = [
     'Flask-SQLAlchemy==2.2',
     'cloudaux>=1.2.0',
     'Flask==0.12.2',
-    'Flask-RESTful==0.3.5',
+    'Flask-RESTful==0.3.6',
     'Flask-Script==2.0.5',
     'flasgger==0.6.3',
     'gunicorn==19.7.1',
