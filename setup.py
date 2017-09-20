@@ -33,7 +33,7 @@ install_requires = [
     'Flask==0.12.2',
     'Flask-RESTful==0.3.6',
     'Flask-Script==2.0.6',
-    'flasgger==0.6.3',
+    'flasgger==0.6.6',
     'gunicorn==19.7.1',
     'psycopg2==2.7.1',
     'pytz==2017.2',
