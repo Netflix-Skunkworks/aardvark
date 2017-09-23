@@ -23,7 +23,7 @@ DB_LOCK = threading.Lock()
 QUEUE_LOCK = threading.Lock()
 UPDATE_DONE = False
 
-SWAG_REPO_PATH = 'https://github.com/Netflix-Skunkworks/swag-client'
+SWAG_REPO_URL = 'https://github.com/Netflix-Skunkworks/swag-client'
 
 PHANTOMJS_EXECUTABLE = 'phantomjs'
 LOCALDB = 'sqlite'
@@ -176,7 +176,7 @@ def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, p
             bucket = bucket_param
             write_swag = True
         else:
-            print('\nAardvark can use SWAG to look up accounts. See {repo_path}'.format(repo_path=SWAG_REPO_PATH))
+            print('\nAardvark can use SWAG to look up accounts. See {repo_url}'.format(repo_url=SWAG_REPO_URL))
             use_swag = raw_input('Do you use SWAG to track accounts? [yN]: ')
             if len(use_swag) > 0 and 'yes'.startswith(use_swag.lower()):
                 bucket_prompt = 'SWAG_BUCKET [{default}]: '.format(default=DEFAULT_SWAG_BUCKET)
