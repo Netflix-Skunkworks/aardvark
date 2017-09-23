@@ -23,6 +23,11 @@ DB_LOCK = threading.Lock()
 QUEUE_LOCK = threading.Lock()
 UPDATE_DONE = False
 
+SWAG_REPO_PATH = 'https://github.com/Netflix-Skunkworks/swag-client'
+
+PHANTOMJS_EXECUTABLE = 'phantomjs'
+LOCALDB = 'sqlite'
+
 # Configuration default values.
 DEFAULT_LOCALDB_FILENAME = 'aardvark.db'
 DEFAULT_SWAG_BUCKET = 'swag-data'
@@ -117,7 +122,7 @@ def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, p
     """
     Creates a config.py configuration file from user input or default values.
 
-    If all configurable values are specified by parameters user input
+    If all configurable values are specified by parameters, user input
     is not needed and will not be prompted.
 
     If the no-prompt flag is not set, user input will be prompted for
@@ -133,23 +138,25 @@ def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, p
     executable is found or specified an Exception is raised.
 
     The resulting configuration file defines the following parameters.
-    Configurable parameters are shown in [brackets].
+    Configurable parameters are shown in <angle braces>.
 
-    SWAG_OPTS = {'swag.type': 's3', 'swag.bucket_name': [bucket]}
+    SWAG_OPTS = {'swag.type': 's3', 'swag.bucket_name': <bucket>}
     SWAG_FILTER = None
     SWAG_SERVICE_ENABLED_REQUIREMENT = None
-    ROLENAME = [aardvark_role]
+    ROLENAME = <aardvark_role>
     REGION = "us-east-1"
-    PHANTOMJS = [phantomjs]
-    SQLALCHEMY_DATABASE_URI = [db_uri]
+    PHANTOMJS = <phantomjs>
+    SQLALCHEMY_DATABASE_URI = <db_uri>
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    NUM_THREADS = [num_threads]
+    NUM_THREADS = <num_threads>
     LOG_CFG = {...}
     """
 
     # We don't set these until runtime.
-    default_db_uri = 'sqlite:///{path}/{filename}'.format(path=os.getcwd(), filename=DEFAULT_LOCALDB_FILENAME)
-    default_phantomjs = find_executable('phantomjs')
+    default_db_uri = '{localdb}:///{path}/{filename}'.format(
+        localdb=LOCALDB, path=os.getcwd(), filename=DEFAULT_LOCALDB_FILENAME
+        )
+    default_phantomjs = find_executable(PHANTOMJS_EXECUTABLE)
 
     if no_prompt:  # Just take the parameters as currently constituted.
         aardvark_role = aardvark_role_param or DEFAULT_AARDVARK_ROLE
@@ -163,33 +170,32 @@ def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, p
         bucket = bucket_param or DEFAULT_SWAG_BUCKET
 
     else:
-        aardvark_role_prompt = 'ROLENAME [{default}]: '.format(default=DEFAULT_AARDVARK_ROLE)
-        db_uri_prompt = 'DATABASE URI [{default}]: '.format(default=default_db_uri)
-        num_threads_prompt = '# THREADS [{default}]: '.format(default=DEFAULT_NUM_THREADS)
-
-        # bucket_offered = ' [{bucket}]'.format(bucket=bucket_param) if bucket_param else ''
-        bucket_prompt = 'SWAG_BUCKET [{default}]: '.format(default=DEFAULT_SWAG_BUCKET)
-
         # This is essentially the same "param, or input, or default"
         # structure as the additional parameters below.
         if bucket_param:
             bucket = bucket_param
             write_swag = True
         else:
-            print('\nAardvark can use SWAG to look up accounts. https://github.com/Netflix-Skunkworks/swag-client')
+            print('\nAardvark can use SWAG to look up accounts. See {repo_path}'.format(repo_path=SWAG_REPO_PATH))
             use_swag = raw_input('Do you use SWAG to track accounts? [yN]: ')
             if len(use_swag) > 0 and 'yes'.startswith(use_swag.lower()):
+                bucket_prompt = 'SWAG_BUCKET [{default}]: '.format(default=DEFAULT_SWAG_BUCKET)
                 bucket = raw_input(bucket_prompt) or DEFAULT_SWAG_BUCKET
                 write_swag = True
             else:
                 write_swag = False
 
+        aardvark_role_prompt = 'ROLENAME [{default}]: '.format(default=DEFAULT_AARDVARK_ROLE)
+        db_uri_prompt = 'DATABASE URI [{default}]: '.format(default=default_db_uri)
+        num_threads_prompt = '# THREADS [{default}]: '.format(default=DEFAULT_NUM_THREADS)
+
         aardvark_role = aardvark_role_param or raw_input(aardvark_role_prompt) or DEFAULT_AARDVARK_ROLE
         db_uri = db_uri_param or raw_input(db_uri_prompt) or default_db_uri
         num_threads = num_threads_param or raw_input(num_threads_prompt) or DEFAULT_NUM_THREADS
 
+        phantom_prompt = 'Path to {phantomjs}: '.format(phantomjs=PHANTOMJS_EXECUTABLE)
         # Note order - we only prompt for phantomjs if we didn't find it.
-        phantom = phantom_param or default_phantomjs or raw_input('Path to phantomjs: ')
+        phantom = phantom_param or default_phantomjs or raw_input(phantom_prompt)
 
     # If this wasn't identified by find_executable() or input, bail out.
     if not phantom:
