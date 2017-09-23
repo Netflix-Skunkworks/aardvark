@@ -112,11 +112,14 @@ def create_db():
     db.create_all()
 
 
-@manager.option('-a', '--aardvark-role', dest='aardvark_role_param', type=unicode, default=None)
-@manager.option('-b', '--swag-bucket', dest='bucket_param', type=unicode, default=None)
-@manager.option('-d', '--db-uri', dest='db_uri_param', type=unicode, default=None)
-@manager.option('--num-threads', dest='num_threads_param', type=int, default=None)
-@manager.option('--phantom', dest='phantom_param', type=unicode, default=None)
+# All of these default to None rather than the corresponding DEFAULT_* values
+# so we can tell whether they were passed or not. We don't prompt for any of
+# the options that were passed as parameters.
+@manager.option('-a', '--aardvark-role', dest='aardvark_role_param', type=unicode)
+@manager.option('-b', '--swag-bucket', dest='bucket_param', type=unicode)
+@manager.option('-d', '--db-uri', dest='db_uri_param', type=unicode)
+@manager.option('--num-threads', dest='num_threads_param', type=int)
+@manager.option('--phantom', dest='phantom_param', type=unicode)
 @manager.option('--no-prompt', dest='no_prompt', action='store_true', default=False)
 def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, phantom_param, no_prompt):
     """
@@ -151,7 +154,6 @@ def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, p
     NUM_THREADS = <num_threads>
     LOG_CFG = {...}
     """
-
     # We don't set these until runtime.
     default_db_uri = '{localdb}:///{path}/{filename}'.format(
         localdb=LOCALDB, path=os.getcwd(), filename=DEFAULT_LOCALDB_FILENAME
