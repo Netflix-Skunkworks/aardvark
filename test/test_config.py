@@ -322,7 +322,7 @@ class TestConfigBase(unittest.TestCase):
             prompt=True,
             short_flags=False
             ):
-        '''Call aardvark config with the --no-prompt flag.'''
+        '''Call aardvark config and interact as necessary.'''
 
         cmdline_option_spec = cmdline_option_spec or {}
         input_option_spec = input_option_spec or {}
@@ -390,12 +390,6 @@ class TestConfigBase(unittest.TestCase):
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 class TestConfigNoPrompt(TestConfigBase):
     '''Test cases for config --no-prompt.'''
-
-    # Throughout, the dicts cmdline_option_spec and config_option_spec
-    # are defined with keys matching the keys in CONFIG_SPEC and the
-    # values defining the value for the corresponding parameter, to be
-    # delivered via a command line parameter to 'aardvark config' or
-    # via entry after the appropriate prompt interactively.
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @unittest.skipIf(not PHANTOMJS_EXECUTABLE, INSTALL_PHANTOM)
@@ -586,12 +580,6 @@ class TestConfigNoPrompt(TestConfigBase):
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 class TestConfigPrompt(TestConfigBase):
     '''Test cases for config with prompting.'''
-
-    # Throughout, the dicts cmdline_option_spec and config_option_spec
-    # are defined with keys matching the keys in CONFIG_SPEC and the
-    # values defining the value for the corresponding parameter, to be
-    # delivered via a command line parameter to 'aardvark config' or
-    # via entry after the appropriate prompt interactively.
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @unittest.skipIf(not PHANTOMJS_EXECUTABLE, INSTALL_PHANTOM)
