@@ -3,30 +3,34 @@
 We test the following for the configurable parameters:
 - Exactly the expected parameters appear in the config file.
 - The expected parameters have the expected values in the config file.
+- If no phantomjs executable is found or specified, no config file is
+  created.
 
 
-Set the SWAG_CONFIG_TEST_ARCHIVE_DIR environment variable to the
-absolute path to the directory to use to archive test artifacts in the
-case of test failures. The default is '/tmp'.
+In the event of test failures it may be helpful to examine the command
+used to launch aardvark config, any responses to prompts and the
+resulting configuration file. To this end, these artifacts will be
+saved in locations controlled by the environment variable
+SWAG_CONFIG_TEST_ARCHIVE_DIR. Set this environment variable to the
+absolute path to the directory to use to archive test artifacts. The
+default is '/tmp'.
 
-At the start of each test case, set self.archive_case_artifacts_as to
-a distinct string to use to name the archive files created if that
-test case fails. The recommended value is the name of the test
-function.
+By default, artifacts will only be saved in the event of test
+failures. To force archiving of test artifacts regardless of test
+status, set the SWAG_CONFIG_TEST_ALWAYS_ARCHIVE to 1 (or anything
+truthy).
 
-As the last line of each case set self.archive_case_artifacts_as to
-None.
-
-If the value of self.archive_case_artifacts_as is not None in
-tearDown, the config file, the command line call to "aardvark config"
-and a transcript of the command line interaction will be archived in
-the archive directory in "command.*" and "config.py.*", where the
-wildcard is replaced by the value of self.archive_case_artifacts_as.
+Archiving occurs in tearDown(). The config file, the command line call
+to "aardvark config" and a transcript of the command line interaction
+will be saved in the archive directory in files named "command.*" and
+"config.py.*". The wildcard will be replaced by default with the name
+of the "test_*" function that was running when the failure occcured.
 
 
-Set the SWAG_CONFIG_TEST_COMMAND_ARCHIVE_DIR environment variable to
-the absolute path to the directory to use to archive the commands
-issued in test cases.  The default is to use the same value as
+The command lines used to call aardvark config in each test case will
+always be archived. Set the SWAG_CONFIG_TEST_COMMAND_ARCHIVE_DIR
+environment variable to the absolute path to the directory to use to
+archive these commands.  The default is to use the same value as
 SWAG_CONFIG_TEST_ARCHIVE_DIR. This will create a record of all the
 command lines executed in execution of these test cases, in files
 names "commands.[TestClassName]".
@@ -47,6 +51,7 @@ found.
 # egrep "def test_|artifacts_as =" test_config.py |\
 # sed -E "s/(.*(def |= '|self.*None)|\(self\):)|'//g"
 
+import inspect
 import os
 import shutil
 import tempfile
@@ -62,6 +67,8 @@ EXPECT_TIMEOUT = 8
 
 CONFIG_FILENAME = 'config.py'
 PHANTOMJS_EXECUTABLE = find_executable(manage.PHANTOMJS_EXECUTABLE)
+
+ALWAYS_ARCHIVE = os.environ.get('SWAG_CONFIG_TEST_ALWAYS_ARCHIVE')
 
 # Locations where we will archive test artifacts.
 DEFAULT_ARTIFACT_ARCHIVE_DIR = '/tmp'
@@ -273,6 +280,7 @@ class TestConfigBase(unittest.TestCase):
         self.clean_tmpdir()
         self.assertFalse(os.path.exists(CONFIG_FILENAME))
         self.last_transcript = []
+        self.archive_case_artifacts_as = None
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     def tearDown(self):
@@ -345,7 +353,7 @@ class TestConfigBase(unittest.TestCase):
         # If we didn't wrap up the session, something's amiss.
         self.assertFalse(spawn_config.isalive())
 
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     def conduct_config_prompt_sequence(self, spawned, input_option_spec):
         '''Carry out the steps in the config prompt sequence.'''
 
@@ -386,6 +394,95 @@ class TestConfigBase(unittest.TestCase):
             response = '' if response is None else response
             spawned.sendline(str(response))
 
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    def case_worker(
+            self,
+            cmdline_option_spec=None,
+            input_option_spec=None,
+            prompt=False,
+            short_flags=False,
+            expect_config_file=True,
+            archive_as=None
+            ):
+        '''Carry out common test steps.
+
+        Parameters:
+
+            cmdline_option_spec (dict or None):
+                A dictionary specifying the options and values to pass
+                to aardvark config as command line flags.
+
+            input_option_spec (dict or None):
+                A dictionary specifying the options and values to pass
+                to aardvark config as prompted interactive input.
+
+            prompt (bool, default: False):
+                If False, set the --no-prompt option when calling
+                aardvark config.
+
+            short_flags (bool, default: False):
+                If True, set the --short-flags  option when calling
+                aardvark config.
+
+            expect_config_file (bool, default: True):
+                If True, test for the presence and correctness of a
+                config file after calling aardvark config. If false,
+                test for the absence of a config file.
+
+            archive_as (str or None):
+                The "unique" string to use when constructing a
+                filename for archiving artifacts of this test case. If
+                None, the name of the nearest calling function in the
+                call stack named "test_*" will be used, if one can be
+                found; otherwise a possibly non-unique string will be
+                used.
+
+        '''
+
+        cmdline_option_spec = cmdline_option_spec or {}
+        input_option_spec = input_option_spec or {}
+        # Combined, for validation.
+        option_spec = dict(cmdline_option_spec, **input_option_spec)
+
+        if not archive_as:
+            # Get the calling test case function's name, for
+            # archiving. We'll take the first caller in the stack
+            # whose name starts with '_test'.
+            caller_names = [
+                inspect.getframeinfo(frame[0]).function
+                for frame in inspect.stack()
+                if inspect.getframeinfo(frame[0]).function.startswith('test_')
+                ]
+            archive_as = caller_names[0] if caller_names else 'unknown_test'
+
+        # Turn on failed-case archive.
+        self.archive_case_artifacts_as = archive_as
+
+        self.assertFalse(os.path.exists(CONFIG_FILENAME))
+        self.call_aardvark_config(
+            cmdline_option_spec=cmdline_option_spec,
+            input_option_spec=input_option_spec,
+            prompt=prompt,
+            short_flags=short_flags
+            )
+
+        if expect_config_file:
+            self.assertTrue(os.path.exists(CONFIG_FILENAME))
+
+            found_config = load_configfile(cmdline_option_spec)
+            expected_config = get_expected_config(option_spec)
+
+            self.assertItemsEqual(expected_config.keys(), found_config.keys())
+            for k, v in found_config.items():
+                self.assertEqual((k, v), (k, expected_config[k]))
+
+        else:
+            self.assertFalse(os.path.exists(CONFIG_FILENAME))
+
+        # Turn off failed-case archive unless we're forcing archiving.
+        if not ALWAYS_ARCHIVE:
+            self.archive_case_artifacts_as = None
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 class TestConfigNoPrompt(TestConfigBase):
@@ -396,35 +493,12 @@ class TestConfigNoPrompt(TestConfigBase):
     def test_no_prompt_defaults(self):
         '''Test with no-prompt and all default arguments.'''
 
-        # Turn on failed-case archive.
-        self.archive_case_artifacts_as = 'test_no_prompt_defaults'
-
-        cmdline_option_spec = {}
-
-        self.assertFalse(os.path.exists(CONFIG_FILENAME))
-        self.call_aardvark_config(
-            cmdline_option_spec=cmdline_option_spec,
-            prompt=False
-            )
-        self.assertTrue(os.path.exists(CONFIG_FILENAME))
-
-        found_config = load_configfile(cmdline_option_spec)
-        expected_config = get_expected_config(cmdline_option_spec)
-
-        self.assertItemsEqual(expected_config.keys(), found_config.keys())
-        for k, v in found_config.items():
-            self.assertEqual((k, v), (k, expected_config[k]))
-
-        # Turn off failed-case archive.
-        self.archive_case_artifacts_as = None
+        self.case_worker()
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     def test_no_prompt_all_parameters(self):
         '''Test with no-prompt and all parameters.'''
 
-        # Turn on failed-case archive.
-        self.archive_case_artifacts_as = 'test_no_prompt_all_parameters'
-
         cmdline_option_spec = {
             'swag_bucket': 'bucket_123',
             'aardvark_role': 'role_123',
@@ -433,30 +507,14 @@ class TestConfigNoPrompt(TestConfigBase):
             'num_threads': 4
             }
 
-        self.assertFalse(os.path.exists(CONFIG_FILENAME))
-        self.call_aardvark_config(
+        self.case_worker(
             cmdline_option_spec=cmdline_option_spec,
-            prompt=False
             )
-        self.assertTrue(os.path.exists(CONFIG_FILENAME))
-
-        found_config = load_configfile(cmdline_option_spec)
-        expected_config = get_expected_config(cmdline_option_spec)
-
-        self.assertItemsEqual(expected_config.keys(), found_config.keys())
-        for k, v in found_config.items():
-            self.assertEqual((k, v), (k, expected_config[k]))
-
-        # Turn off failed-case archive.
-        self.archive_case_artifacts_as = None
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     def test_no_prompt_all_parameters_short(self):
         '''Test with no-prompt and short parameters.'''
 
-        # Turn on failed-case archive.
-        self.archive_case_artifacts_as = 'test_no_prompt_all_parameters_short'
-
         cmdline_option_spec = {
             'swag_bucket': 'bucket_123',
             'aardvark_role': 'role_123',
@@ -465,30 +523,14 @@ class TestConfigNoPrompt(TestConfigBase):
             'num_threads': 4
             }
 
-        self.assertFalse(os.path.exists(CONFIG_FILENAME))
-        self.call_aardvark_config(
+        self.case_worker(
             cmdline_option_spec=cmdline_option_spec,
-            short_flags=True,
-            prompt=False
+            short_flags=True
             )
-        self.assertTrue(os.path.exists(CONFIG_FILENAME))
-
-        found_config = load_configfile(cmdline_option_spec)
-        expected_config = get_expected_config(cmdline_option_spec)
-
-        self.assertItemsEqual(expected_config.keys(), found_config.keys())
-        for k, v in found_config.items():
-            self.assertEqual((k, v), (k, expected_config[k]))
-
-        # Turn off failed-case archive.
-        self.archive_case_artifacts_as = None
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     def test_no_prompt_no_swag(self):
         '''Test with no-prompt and all non-swag parameters.'''
-
-        # Turn on failed-case archive.
-        self.archive_case_artifacts_as = 'test_no_prompt_no_swag'
 
         cmdline_option_spec = {
             'aardvark_role': 'role_123',
@@ -497,22 +539,9 @@ class TestConfigNoPrompt(TestConfigBase):
             'num_threads': 4
             }
 
-        self.assertFalse(os.path.exists(CONFIG_FILENAME))
-        self.call_aardvark_config(
+        self.case_worker(
             cmdline_option_spec=cmdline_option_spec,
-            prompt=False
             )
-        self.assertTrue(os.path.exists(CONFIG_FILENAME))
-
-        found_config = load_configfile(cmdline_option_spec)
-        expected_config = get_expected_config(cmdline_option_spec)
-
-        self.assertItemsEqual(expected_config.keys(), found_config.keys())
-        for k, v in found_config.items():
-            self.assertEqual((k, v), (k, expected_config[k]))
-
-        # Turn off failed-case archive.
-        self.archive_case_artifacts_as = None
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @unittest.skipIf(PHANTOMJS_EXECUTABLE, HIDE_PHANTOM)
@@ -522,25 +551,9 @@ class TestConfigNoPrompt(TestConfigBase):
         This requires intervention to "hide" the phantom executable.
         '''
 
-        # Turn on failed-case archive.
-        self.archive_case_artifacts_as = (
-            'test_no_prompt_no_phantom_raises_error'
+        self.case_worker(
+            expect_config_file=False
             )
-
-        cmdline_option_spec = {}
-
-        # We really should check for an exception here but that happens
-        # in the interactive session. We'll fudge it by just checking
-        # that no config file is created.
-        self.assertFalse(os.path.exists(CONFIG_FILENAME))
-        self.call_aardvark_config(
-            cmdline_option_spec=cmdline_option_spec,
-            prompt=False
-            )
-        self.assertFalse(os.path.exists(CONFIG_FILENAME))
-
-        # Turn off failed-case archive.
-        self.archive_case_artifacts_as = None
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @unittest.skipIf(PHANTOMJS_EXECUTABLE, HIDE_PHANTOM)
@@ -550,31 +563,13 @@ class TestConfigNoPrompt(TestConfigBase):
         This requires intervention to "hide" the phantom executable.
         '''
 
-        # Turn on failed-case archive.
-        self.archive_case_artifacts_as = (
-            'test_no_prompt_specify_phantom_no_executable'
-            )
-
         cmdline_option_spec = {
             'phantom': 'phantom_123',
             }
 
-        self.assertFalse(os.path.exists(CONFIG_FILENAME))
-        self.call_aardvark_config(
+        self.case_worker(
             cmdline_option_spec=cmdline_option_spec,
-            prompt=False
             )
-        self.assertTrue(os.path.exists(CONFIG_FILENAME))
-
-        found_config = load_configfile(cmdline_option_spec)
-        expected_config = get_expected_config(cmdline_option_spec)
-
-        self.assertItemsEqual(expected_config.keys(), found_config.keys())
-        for k, v in found_config.items():
-            self.assertEqual((k, v), (k, expected_config[k]))
-
-        # Turn off failed-case archive.
-        self.archive_case_artifacts_as = None
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -586,38 +581,13 @@ class TestConfigPrompt(TestConfigBase):
     def test_prompted_defaults(self):
         '''Test with no parameters specified.'''
 
-        # Turn on failed-case archive.
-        self.archive_case_artifacts_as = 'test_prompted_defaults'
-
-        cmdline_option_spec = {}
-        input_option_spec = {'num_threads': 4}
-
-        # Combined, for validation.
-        option_spec = dict(cmdline_option_spec, **input_option_spec)
-
-        self.assertFalse(os.path.exists(CONFIG_FILENAME))
-        self.call_aardvark_config(
-            cmdline_option_spec=cmdline_option_spec,
-            input_option_spec=input_option_spec
+        self.case_worker(
+            prompt=True
             )
-        self.assertTrue(os.path.exists(CONFIG_FILENAME))
-
-        found_config = load_configfile(option_spec)
-        expected_config = get_expected_config(option_spec)
-
-        self.assertItemsEqual(expected_config.keys(), found_config.keys())
-        for k, v in found_config.items():
-            self.assertEqual((k, v), (k, expected_config[k]))
-
-        # Turn off failed-case archive.
-        self.archive_case_artifacts_as = None
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     def test_prompted_all_cmdline_parameters(self):
         '''Test with all parameters passed as options.'''
-
-        # Turn on failed-case archive.
-        self.archive_case_artifacts_as = 'test_prompted_all_cmdline_parameters'
 
         cmdline_option_spec = {
             'swag_bucket': 'bucket_123',
@@ -626,72 +596,33 @@ class TestConfigPrompt(TestConfigBase):
             'db_uri': 'db_uri_123',
             'num_threads': 4
             }
-        input_option_spec = {}
 
-        # Combined, for validation.
-        option_spec = dict(cmdline_option_spec, **input_option_spec)
-
-        self.assertFalse(os.path.exists(CONFIG_FILENAME))
-        self.call_aardvark_config(
+        self.case_worker(
             cmdline_option_spec=cmdline_option_spec,
-            input_option_spec=input_option_spec
+            prompt=True
             )
-        self.assertTrue(os.path.exists(CONFIG_FILENAME))
-
-        found_config = load_configfile(option_spec)
-        expected_config = get_expected_config(option_spec)
-
-        self.assertItemsEqual(expected_config.keys(), found_config.keys())
-        for k, v in found_config.items():
-            self.assertEqual((k, v), (k, expected_config[k]))
-
-        # Turn off failed-case archive.
-        self.archive_case_artifacts_as = None
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @unittest.skipIf(not PHANTOMJS_EXECUTABLE, INSTALL_PHANTOM)
     def test_prompted_no_swag(self):
         '''Test with all non-swag parameters interactively.'''
 
-        # Turn on failed-case archive.
-        self.archive_case_artifacts_as = 'test_prompted_no_swag'
-
-        cmdline_option_spec = {}
         input_option_spec = {
             'aardvark_role': 'role_123',
             'db_uri': 'db_uri_123',
             'num_threads': 4
             }
 
-        # Combined, for validation.
-        option_spec = dict(cmdline_option_spec, **input_option_spec)
-
-        self.assertFalse(os.path.exists(CONFIG_FILENAME))
-        self.call_aardvark_config(
-            cmdline_option_spec=cmdline_option_spec,
-            input_option_spec=input_option_spec
+        self.case_worker(
+            input_option_spec=input_option_spec,
+            prompt=True
             )
-        self.assertTrue(os.path.exists(CONFIG_FILENAME))
-
-        found_config = load_configfile(option_spec)
-        expected_config = get_expected_config(option_spec)
-
-        self.assertItemsEqual(expected_config.keys(), found_config.keys())
-        for k, v in found_config.items():
-            self.assertEqual((k, v), (k, expected_config[k]))
-
-        # Turn off failed-case archive.
-        self.archive_case_artifacts_as = None
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @unittest.skipIf(not PHANTOMJS_EXECUTABLE, INSTALL_PHANTOM)
     def test_prompted_nophantom_option(self):
         '''Test with all non-phantom parameters interactively.'''
 
-        # Turn on failed-case archive.
-        self.archive_case_artifacts_as = 'test_prompted_nophantom'
-
-        cmdline_option_spec = {}
         input_option_spec = {
             'swag_bucket': 'bucket_123',
             'aardvark_role': 'role_123',
@@ -699,25 +630,10 @@ class TestConfigPrompt(TestConfigBase):
             'num_threads': 4
             }
 
-        # Combined, for validation.
-        option_spec = dict(cmdline_option_spec, **input_option_spec)
-
-        self.assertFalse(os.path.exists(CONFIG_FILENAME))
-        self.call_aardvark_config(
-            cmdline_option_spec=cmdline_option_spec,
-            input_option_spec=input_option_spec
+        self.case_worker(
+            input_option_spec=input_option_spec,
+            prompt=True
             )
-        self.assertTrue(os.path.exists(CONFIG_FILENAME))
-
-        found_config = load_configfile(option_spec)
-        expected_config = get_expected_config(option_spec)
-
-        self.assertItemsEqual(expected_config.keys(), found_config.keys())
-        for k, v in found_config.items():
-            self.assertEqual((k, v), (k, expected_config[k]))
-
-        # Turn off failed-case archive.
-        self.archive_case_artifacts_as = None
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @unittest.skipIf(PHANTOMJS_EXECUTABLE, HIDE_PHANTOM)
@@ -727,28 +643,10 @@ class TestConfigPrompt(TestConfigBase):
         This requires intervention to "hide" the phantom executable.
         '''
 
-        # Turn on failed-case archive.
-        self.archive_case_artifacts_as = (
-            'test_prompted_no_phantom_raises_error'
+        self.case_worker(
+            prompt=True,
+            expect_config_file=False
             )
-
-        cmdline_option_spec = {}
-        input_option_spec = {}
-
-        # Combined, for validation.
-        option_spec = dict(cmdline_option_spec, **input_option_spec)
-
-        # We really should check for an exception here but that happens
-        # in the interactive session. We'll fudge it by just checking
-        # that no config file is created.
-        self.assertFalse(os.path.exists(CONFIG_FILENAME))
-        self.call_aardvark_config(
-            cmdline_option_spec=option_spec,
-            )
-        self.assertFalse(os.path.exists(CONFIG_FILENAME))
-
-        # Turn off failed-case archive.
-        self.archive_case_artifacts_as = None
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @unittest.skipIf(PHANTOMJS_EXECUTABLE, HIDE_PHANTOM)
@@ -758,34 +656,14 @@ class TestConfigPrompt(TestConfigBase):
         This requires intervention to "hide" the phantom executable.
         '''
 
-        # Turn on failed-case archive.
-        self.archive_case_artifacts_as = (
-            'test_prompted_input_phantom_no_executable'
-            )
-
-        cmdline_option_spec = {}
         input_option_spec = {
             'phantom': 'phantom_123',
             }
 
-        # Combined, for validation.
-        option_spec = dict(cmdline_option_spec, **input_option_spec)
-
-        self.assertFalse(os.path.exists(CONFIG_FILENAME))
-        self.call_aardvark_config(
-            cmdline_option_spec=option_spec,
+        self.case_worker(
+            input_option_spec=input_option_spec,
+            prompt=True,
             )
-        self.assertTrue(os.path.exists(CONFIG_FILENAME))
-
-        found_config = load_configfile(cmdline_option_spec)
-        expected_config = get_expected_config(option_spec)
-
-        self.assertItemsEqual(expected_config.keys(), found_config.keys())
-        for k, v in found_config.items():
-            self.assertEqual((k, v), (k, expected_config[k]))
-
-        # Turn off failed-case archive.
-        self.archive_case_artifacts_as = None
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @unittest.skipIf(PHANTOMJS_EXECUTABLE, HIDE_PHANTOM)
@@ -795,47 +673,22 @@ class TestConfigPrompt(TestConfigBase):
         This requires intervention to "hide" the phantom executable.
         '''
 
-        # Turn on failed-case archive.
-        self.archive_case_artifacts_as = (
-            'test_prompted_input_phantom_no_executable'
-            )
-
         cmdline_option_spec = {
             'phantom': 'phantom_123',
             }
-        input_option_spec = {}
 
-        # Combined, for validation.
-        option_spec = dict(cmdline_option_spec, **input_option_spec)
-
-        self.assertFalse(os.path.exists(CONFIG_FILENAME))
-        self.call_aardvark_config(
-            cmdline_option_spec=option_spec,
+        self.case_worker(
+            cmdline_option_spec=cmdline_option_spec,
+            prompt=True,
             )
-        self.assertTrue(os.path.exists(CONFIG_FILENAME))
-
-        found_config = load_configfile(cmdline_option_spec)
-        expected_config = get_expected_config(option_spec)
-
-        self.assertItemsEqual(expected_config.keys(), found_config.keys())
-        for k, v in found_config.items():
-            self.assertEqual((k, v), (k, expected_config[k]))
-
-        # Turn off failed-case archive.
-        self.archive_case_artifacts_as = None
-
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Define test suite.
+# Define test suites.
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 load_case = unittest.TestLoader().loadTestsFromTestCase
 all_suites = {
-    'testconfignoprompt': load_case(
-        TestConfigNoPrompt
-        ),
-    'testconfigprompt': load_case(
-        TestConfigPrompt
-        )
+    'testconfignoprompt': load_case(TestConfigNoPrompt),
+    'testconfigprompt': load_case(TestConfigPrompt)
     }
 
 master_suite = unittest.TestSuite(all_suites.values())
