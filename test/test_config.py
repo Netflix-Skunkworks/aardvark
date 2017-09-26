@@ -46,11 +46,6 @@ found.
 
 '''
 
-# Note: regarding keeping the archive_test_case_artifacts_as in sync
-# with test case names, check the output of this command:
-# egrep "def test_|artifacts_as =" test_config.py |\
-# sed -E "s/(.*(def |= '|self.*None)|\(self\):)|'//g"
-
 import inspect
 import os
 import shutil
