@@ -43,6 +43,7 @@ install_requires = [
 ]
 
 tests_require = [
+    'pexpect>=4.2.1'
 ]
 
 docs_require = [
