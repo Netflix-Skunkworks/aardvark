@@ -442,7 +442,7 @@ class TestConfigBase(unittest.TestCase):
         if not archive_as:
             # Get the calling test case function's name, for
             # archiving. We'll take the first caller in the stack
-            # whose name starts with '_test'.
+            # whose name starts with 'test_'.
             caller_names = [
                 inspect.getframeinfo(frame[0]).function
                 for frame in inspect.stack()
