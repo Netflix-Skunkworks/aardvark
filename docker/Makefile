@@ -1,0 +1,402 @@
+
+
+
+help:		## Display this message.
+	@printf '$(subst $(newline),\n,${HELPPROLOGUE})'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		egrep "\b(aardvark-all|aardvark-sqlite)\b" | \
+		sort | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m    %-24s\033[0m %s\n", $$1, $$2}'
+	@printf '$(subst $(newline),\n,${HELPINTERLUDE1})'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		grep "clean" | \
+		sort | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m    %-24s\033[0m %s\n", $$1, $$2}'
+	@printf '$(subst $(newline),\n,${HELPINTERLUDE2})'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		sort | \
+		egrep -v "\b(aardvark-all|aardvark-sqlite|clean.*|help)\b" | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m    %-24s\033[0m %s\n", $$1, $$2}'
+	@echo
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		grep help | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m    %-24s\033[0m %s\n", $$1, $$2}'
+	@printf '$(subst $(newline),\n,${HELPEPILOGUE})'
+
+define HELPPROLOGUE
+
+To build an aardvark deployment from scratch, make one of these targets:
+
+
+endef
+
+define HELPINTERLUDE1
+
+    See below for examples and for environment variable settings required to
+    properly configure your aardvark deployment and use.
+
+
+Remove intermediate and final files and/or docker images with the following
+cleanup targets:
+
+
+endef
+
+define HELPINTERLUDE2
+
+
+Additional available targets include:
+
+
+endef
+
+define HELPEPILOGUE
+
+
+Note:
+
+    * New docker images will overwrite existing images created by this Makefile.
+
+    * Nothing you can do with this Makefile will stop or remove any existing
+      container.
+
+    * Nothing you can do with this Makefile will remove or overwrite an
+      existing aardvark-data volume.
+
+
+
+Environment Variables
+=====================
+
+A number of build-time and run-time configuration options are controlled with
+environment variables.
+
+
+Configuration build-time environment variables are passed to aardvark-config
+when the base images for the aardvark collector and aardvark apiserver
+containers are built.
+
+                        aardvark
+Configuration           config
+build-time Variable     Parameter       Notes
+-------------------     ---------       ---------------------------------------
+AARDVARK_DB_URI         db-uri          Required when not using a local mysql
+                                        database.
+
+AARDVARK_ROLE           aardvark-role   Required if the sts:AssumeRole for
+                                        aardvark is not named "Aardvark".
+
+SWAG_BUCKET             swag-bucket     Required when using swag.
+
+Note that if set the values of these environment variables are automatically
+passed to the make process without any explicit passing of parameters.
+
+
+Runtime environment variables need to be set when launching the collector or
+apiserver containers.
+
+Runtime Variable        Used by         Notes
+-------------------     ---------       ---------------------------------------
+AARDVARK_ACCOUNTS       collector       Required if not using swag. Set this to
+                                        a list of AWS account numbers from
+                                        which to collect Access Advisor records.
+
+AWS_ACCESS_KEY_ID       collector       Required if not running on an EC2
+AWS_SECRET_ACCESS_KEY   collector       instance with an appropriate Instance
+                                        Profile. Set these to the credentials of
+                                        an AWS IAM user with permission to
+                                        sts:AssumeRole to the Aardvark audit
+                                        role.
+
+AARDVARK_API_PORT       apiserver       Optional. The default is 5000, and this
+                                        environment variable is unneeded if the
+                                        apiserver container is run with
+                                        "-p 127.0.0.1:80:5000".
+                                        Specifies the container port on which
+                                        the aardvark API server listens.
+
+Note that these values must be explicitly specified on the "docker run" command
+line when launching containers.
+
+
+Customization build-time variables control other aspects of the build process.
+
+Customization
+build-time Variable     Notes
+-------------------     ------------------------------------------------------
+AARDVARK_IMAGES_TAG     A common tag to apply to the docker images and volumes
+                        created by the build process.
+
+                          * If changed, be sure to run "make clean" prior to
+                            the next build.
+
+                          * If you want to remove existing images tagged with
+                            the old value, run "make clean-docker" before
+                            changing the value.
+
+
+Examples
+========
+
+Using swag
+-----------------------------------------------------------
+	$$ export SWAG_BUCKET="<swag-bucket-name>"
+	$$ make clean-all
+	$$ make aardvark-all
+	$$ docker run --rm aardvark-collector
+	$$ docker run -p 127.0.0.1:80:5000 aardvark-apiserver
+
+
+Without swag
+-----------------------------------------------------------
+	$$ make clean-all
+	$$ make aardvark-all
+	$$ export AARDVARK_ACCOUNTS="<account_number>[ account_number [...]]"
+	$$ docker run -e AARDVARK_ACCOUNTS --rm aardvark-collector
+	$$ docker run -p 127.0.0.1:80:5000 aardvark-apiserver
+
+
+Using an RDS database
+-----------------------------------------------------------
+	$$ export AARDVARK_DB_URI="<database URI>"
+	$$ make clean-all
+	$$ make aardvark-all
+	$$ docker run --rm aardvark-collector
+	$$ docker run -p 127.0.0.1:80:5000 aardvark-apiserver
+
+
+Using a local sqlite database *
+-----------------------------------------------------------
+	$$ make clean-all
+	$$ make aardvark-sqlite
+	$$ export AARDVARK_API_PORT="5000"
+	$$ docker run -v aardvark-data:/usr/share/aardvark-data --rm aardvark-collector
+	$$ docker run -v aardvark-data:/usr/share/aardvark-data -p 127.0.0.1:80:$$AARDVARK_API_PORT aardvark-apiserver
+
+	* Shown with a parameter for completeness. The API server will be listening
+	  on the port specified by the AARDVARK_API_PORT environment variable. The
+	  default is 5000, so the environment variable is not necessary if the
+	  apiserver container is started with "-p 127.0.0.1:80:5000".
+
+	* The shared volume mount point "/usr/share/aardvark-data" is created by
+	  the build process and must be specified when launching both the
+	  collector and the apiserver containers.
+
+
+Running the collector container with AWS IAM credentials *
+-----------------------------------------------------------
+
+	$$ export AWS_ACCESS_KEY_ID=<aws_access_key_id>
+	$$ export AWS_SECRET_ACCESS_KEY=<aws_secret_access_key>
+	$$ docker run -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY --rm aardvark-collector
+
+    * Of course, do not save the AWS IAM credentials anywhere other than a
+      properly configured secrets management system.
+
+
+endef
+
+# This lets us get the HELPTEXT string across the make/shell expansion
+# combination.
+define newline
+
+
+endef
+
+
+# - - - - - - - - - - - - - - - -
+# Update these to rev the phantomjs version.
+# - - - - - - - - - - - - - - - -
+PHANTOMJS_VERSION = phantomjs-2.1.1-linux-x86_64
+PHANTOMJS_SHA = 86dd9a4bf4aee45f1a84c9f61cf1947c1d6dce9b9e8d2a907105da7852460d2f
+# PHANTOMJS_2_1_1_SHA = 86dd9a4bf4aee45f1a84c9f61cf1947c1d6dce9b9e8d2a907105da7852460d2f
+
+PHANTOMJS_ARCHIVE = $(PHANTOMJS_VERSION).tar.bz2
+
+# - - - - - - - - - - - - - - - -
+# Many build steps are docker build or docker run, which create no
+# actual target and would always rebuild. These files are created by
+# the corresponding build steps to indicate that the step is complete.
+# They are among those removed by "make clean".
+# - - - - - - - - - - - - - - - -
+ARTIFACTS_DIR = artifacts
+AARDVARK_BASE_DOCKER_BUILD_PSEUDO = $(ARTIFACTS_DIR)/aardvark-base-docker-build
+AARDVARK_DATA_DOCKER_BUILD_PSEUDO = $(ARTIFACTS_DIR)/aardvark-data-docker-build
+AARDVARK_DATA_DOCKER_RUN_PSEUDO = $(ARTIFACTS_DIR)/aardvark-data-docker-run
+AARDVARK_APISERVER_DOCKER_BUILD_PSEUDO = $(ARTIFACTS_DIR)/aardvark-apiserver-docker-build
+AARDVARK_COLLECTOR_DOCKER_BUILD_PSEUDO = $(ARTIFACTS_DIR)/aardvark-collector-docker-build
+
+# - - - - - - - - - - - - - - - -
+# These are removed by "make clean".
+# - - - - - - - - - - - - - - - -
+ALL_CLEANUP = \
+	$(AARDVARK_BASE_DOCKER_BUILD_PSEUDO) \
+	$(AARDVARK_DATA_DOCKER_BUILD_PSEUDO) \
+	$(AARDVARK_DATA_DOCKER_RUN_PSEUDO) \
+	$(AARDVARK_APISERVER_DOCKER_BUILD_PSEUDO) \
+	$(AARDVARK_COLLECTOR_DOCKER_BUILD_PSEUDO) \
+	$(PHANTOMJS_ARCHIVE) \
+	$(PHANTOMJS_ARCHIVE).shasum \
+	aardvark \
+	phantomjs*
+
+# - - - - - - - - - - - - - - - -
+# These are removed by "make clean-docker".
+# - - - - - - - - - - - - - - - -
+ALL_DOCKER_CLEANUP = \
+	aardvark-apiserver \
+	aardvark-collector \
+	aardvark-data-init \
+	aardvark-base
+
+# - - - - - - - - - - - - - - - -
+# These are target lists in multiple places.
+# - - - - - - - - - - - - - - - -
+PREREQUISITES = aardvark phantomjs
+AARDVARK_SERVICE = aardvark-collector aardvark-apiserver
+
+# - - - - - - - - - - - - - - - -
+# This is passed to the aardvark-base docker build to create the mount
+# point for the shared volume if an sqlite local database is used; the
+# same value is passed to the aardvark-data-volume build and run to
+# initialize the shared data volume. It *also* needs to be consistent
+# with the mount location specified when the apiserver and collector
+# containers are launched, but that happens outside the scope of this
+# Makefile. The example in the help text shows the correct location to
+# use.
+# - - - - - - - - - - - - - - - -
+AARDVARK_DATA_DIR = /usr/share/aardvark-data
+
+# - - - - - - - - - - - - - - - -
+# The default when invoking aardvark config with no db_uri parameter
+# is to set the DB_URI to the sqlite path to /usr/share/aardvark-data.
+# Setting AARDVARK_DATA_DIR at the aardvark-sqlite level is therefore
+# superfluous, but the value needs to be in sync with the shared data
+# volume mount point so we make it explicit here.
+# - - - - - - - - - - - - - - - -
+aardvark-sqlite $(AARDVARK_DATA_DOCKER_RUN_PSEUDO): AARDVARK_DATA_DIR = /usr/share/aardvark-data
+
+# - - - - - - - - - - - - - - - -
+# These are provided for entry points (the <X> in "make <X>"). They
+# have no (real or stand-in) targets and should not be used as
+# dependencies as this will always trigger upstream rebuilds.
+# - - - - - - - - - - - - - - - -
+aardvark-all: $(AARDVARK_SERVICE)		## Build the aardvark collector and apiserver docker images.
+aardvark-sqlite: $(AARDVARK_DATA_DOCKER_RUN_PSEUDO) $(AARDVARK_SERVICE) ## Build the collector and apiserver images and initialize a shared volume sqlite database.
+aardvark-apiserver: $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO) $(AARDVARK_APISERVER_DOCKER_BUILD_PSEUDO)		## Build the aardvark apiserver docker image.
+aardvark-collector: $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO) $(AARDVARK_COLLECTOR_DOCKER_BUILD_PSEUDO)		## Build the aardvark collector docker image.
+aardvark-data-volume: $(AARDVARK_DATA_DOCKER_RUN_PSEUDO)		## Create and initialize the aardvark local sqlite database shared volume.
+aardvark-base: $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO)	## Create the base docker image for subsequent aardvark images.
+prerequisites: $(PREREQUISITES)		## Fetch the phantomjs package and the aardvark repository if not present.
+
+# - - - - - - - - - - - - - - - -
+.PHONY: clean clean-docker clean-all help
+
+clean:		## Remove build artifacts (intermediate, target and pseudo-target files and directories).
+	-rm -rf $(ALL_CLEANUP)
+
+clean-docker:		## Remove existing docker images (prompts for confirmation).
+	@echo "This will remove the following docker images if they exist:"; \
+	for image in $(ALL_DOCKER_CLEANUP) ; do \
+		echo "    $$image$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi)"; \
+		done; \
+    read -p "Proceed? (y/n) " response; \
+    case $$response in \
+        [Yy]* ) break;; \
+        * ) echo "skipping docker cleanup"; exit;; \
+	    esac; \
+	for image in $(ALL_DOCKER_CLEANUP) ; do \
+		if [ -n "$$(docker image ls "$$image$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi)" | grep -v REPOSITORY)" ]; then \
+			echo "removing $$image with \"docker image rm $$image\""; \
+			docker image rm "$$image$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi)"; \
+			fi; \
+		done
+
+clean-all: clean clean-docker		## Equivalent to 'make clean' and 'make clean-docker'.
+
+# - - - - - - - - - - - - - - - -
+$(AARDVARK_COLLECTOR_DOCKER_BUILD_PSEUDO):
+	docker build \
+		-t "aardvark-collector$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi)" \
+		-f Dockerfile.collector \
+		.; \
+	AARDVARK_COLLECTOR_IMAGE_LS=$$(docker image ls | egrep "aardvark-collector *$$AARDVARK_IMAGES_TAG"); \
+	mkdir -p $(ARTIFACTS_DIR); \
+	rm -f $(AARDVARK_COLLECTOR_DOCKER_BUILD_PSEUDO); \
+	if [ -n "$$AARDVARK_COLLECTOR_IMAGE_LS" ] ; then \
+		echo "$$AARDVARK_COLLECTOR_IMAGE_LS" > $(AARDVARK_COLLECTOR_DOCKER_BUILD_PSEUDO); \
+		fi
+
+# - - - - - - - - - - - - - - - -
+$(AARDVARK_APISERVER_DOCKER_BUILD_PSEUDO):
+	docker build \
+		-t "aardvark-apiserver$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi)" \
+		-f Dockerfile.apiserver \
+		.; \
+	AARDVARK_APISERVER_IMAGE_LS=$$(docker image ls | egrep "aardvark-apiserver *$$AARDVARK_IMAGES_TAG"); \
+	mkdir -p $(ARTIFACTS_DIR); \
+	rm -f $(AARDVARK_APISERVER_DOCKER_BUILD_PSEUDO); \
+	if [ -n "$$AARDVARK_APISERVER_IMAGE_LS" ] ; then \
+		echo "$$AARDVARK_APISERVER_IMAGE_LS" > $(AARDVARK_APISERVER_DOCKER_BUILD_PSEUDO); \
+		fi
+
+# - - - - - - - - - - - - - - - -
+$(AARDVARK_DATA_DOCKER_RUN_PSEUDO): $(AARDVARK_DATA_DOCKER_BUILD_PSEUDO)
+	mkdir -p $(ARTIFACTS_DIR); \
+	if [ -n "$$(docker volume ls | egrep "\baardvark-data$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo "-$$AARDVARK_IMAGES_TAG"; fi)$$")" ] ; then \
+		echo "Using existing aardvark-data docker volume"; \
+		echo "Using existing aardvark-data docker volume" > $(AARDVARK_DATA_DOCKER_RUN_PSEUDO); \
+	else \
+		docker volume create aardvark-data; \
+		rm -f $(AARDVARK_DATA_DOCKER_RUN_PSEUDO); \
+		docker run -v aardvark-data$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo "-$$AARDVARK_IMAGES_TAG"; fi):$(AARDVARK_DATA_DIR) --rm aardvark-data-init$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi); \
+		echo "initialized data directory $(AARDVARK_DATA_DIR)" > $(AARDVARK_DATA_DOCKER_RUN_PSEUDO); \
+		fi
+
+$(AARDVARK_DATA_DOCKER_BUILD_PSEUDO): $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO)
+	docker build \
+		-t "aardvark-data-init$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi)" \
+		-f Dockerfile.initialize-local-data-volume  \
+		--build-arg AARDVARK_DATA_DIR=$(AARDVARK_DATA_DIR) \
+		.; \
+	AARDVARK_DATA_INIT_IMAGE_LS=$$(docker image ls | egrep "aardvark-data-init *$$AARDVARK_IMAGES_TAG"); \
+	mkdir -p $(ARTIFACTS_DIR); \
+	rm -f $(AARDVARK_DATA_DOCKER_BUILD_PSEUDO); \
+	if [ -n "$$AARDVARK_DATA_INIT_IMAGE_LS" ] ; then \
+		echo "$$AARDVARK_DATA_INIT_IMAGE_LS" > $(AARDVARK_DATA_DOCKER_BUILD_PSEUDO); \
+		fi
+
+# - - - - - - - - - - - - - - - -
+$(AARDVARK_BASE_DOCKER_BUILD_PSEUDO): $(PREREQUISITES)
+
+	docker build \
+		-t "aardvark-base$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi)" \
+		-f Dockerfile.aardvark-base \
+		--build-arg AARDVARK_DATA_DIR=$(AARDVARK_DATA_DIR) \
+		--build-arg AARDVARK_DB_URI \
+		--build-arg AARDVARK_ROLE \
+		--build-arg SWAG_BUCKET \
+		.; \
+	AARDVARK_BASE_IMAGE_LS=$$(docker image ls | egrep "aardvark-base *$$AARDVARK_IMAGES_TAG"); \
+	mkdir -p $(ARTIFACTS_DIR); \
+	rm -f $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO); \
+	if [ -n "$$AARDVARK_BASE_IMAGE_LS" ] ; then \
+		echo "$$AARDVARK_BASE_IMAGE_LS" > $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO); \
+		fi
+
+# - - - - - - - - - - - - - - - -
+phantomjs: $(PHANTOMJS_VERSION)		## Fetch the phantomjs package.
+	ln -s $(PHANTOMJS_VERSION) phantomjs
+
+$(PHANTOMJS_VERSION): $(PHANTOMJS_ARCHIVE)
+	rm -f $(PHANTOMJS_ARCHIVE).shasum
+	echo "$(PHANTOMJS_SHA)  $(PHANTOMJS_ARCHIVE)" > $(PHANTOMJS_ARCHIVE).shasum
+	@shasum -c $(PHANTOMJS_ARCHIVE).shasum
+	tar -xf $(PHANTOMJS_ARCHIVE) $(PHANTOMJS_VERSION)
+
+$(PHANTOMJS_ARCHIVE):
+	curl -Ls https://bitbucket.org/ariya/phantomjs/downloads/$(PHANTOMJS_ARCHIVE) > $(PHANTOMJS_ARCHIVE)
+
+# - - - - - - - - - - - - - - - -
+aardvark:		## Clone the aardvark repository.
+	git clone https://github.com/Netflix-Skunkworks/aardvark.git
