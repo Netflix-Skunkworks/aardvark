@@ -56,12 +56,17 @@ define HELPEPILOGUE
 Note:
 
     * New docker images will overwrite existing images created by this Makefile.
+      Set the AARDVARK_IMAGES_TAG environment variable to specify a tag to
+      distinguish new images created with this Makefile from existing images.
 
     * Nothing you can do with this Makefile will stop or remove any existing
       container.
 
     * Nothing you can do with this Makefile will remove or overwrite an
-      existing aardvark-data volume.
+      existing aardvark-data volume. If the AARDVARK_IMAGES_TAG environment
+      variable is set when you make the aardvark-sqlite or the
+      aardvark-data-volume target, a new aardvark-data-$$AARDVARK_IMAGES_TAG
+      volume will be created if it does not already exist.
 
 
 
@@ -89,7 +94,7 @@ AARDVARK_ROLE           aardvark-role   Required if the sts:AssumeRole for
 SWAG_BUCKET             swag-bucket     Required when using swag.
 
 Note that if set the values of these environment variables are automatically
-passed to the make process without any explicit passing of parameters.
+picked up by the make process without any explicit passing of parameters.
 
 
 Runtime environment variables need to be set when launching the collector or
@@ -108,12 +113,16 @@ AWS_SECRET_ACCESS_KEY   collector       instance with an appropriate Instance
                                         sts:AssumeRole to the Aardvark audit
                                         role.
 
-AARDVARK_API_PORT       apiserver       Optional. The default is 5000, and this
+AARDVARK_API_PORT       apiserver       Optional. Specifies the container port 
+                                        on which the aardvark API server
+                                        listens. The default is 5000, and this
                                         environment variable is unneeded if the
                                         apiserver container is run with
-                                        "-p 127.0.0.1:80:5000".
-                                        Specifies the container port on which
-                                        the aardvark API server listens.
+                                        "-p 127.0.0.1:[HOST_PORT]:5000".
+                                        If for some reason you do set this
+                                        variable, run the aardvark apiserver
+                                        with the $$AARDVARK_API_PORT published
+                                        to the host.
 
 Note that these values must be explicitly specified on the "docker run" command
 line when launching containers.
@@ -140,58 +149,61 @@ Examples
 
 Using swag
 -----------------------------------------------------------
-	$$ export SWAG_BUCKET="<swag-bucket-name>"
-	$$ make clean-all
-	$$ make aardvark-all
-	$$ docker run --rm aardvark-collector
-	$$ docker run -p 127.0.0.1:80:5000 aardvark-apiserver
+    $$ export SWAG_BUCKET="<swag-bucket-name>"
+    $$ make clean-all
+    $$ make aardvark-all
+    $$ docker run --rm aardvark-collector
+    $$ docker run -p 127.0.0.1:80:5000 aardvark-apiserver
 
 
 Without swag
 -----------------------------------------------------------
-	$$ make clean-all
-	$$ make aardvark-all
-	$$ export AARDVARK_ACCOUNTS="<account_number>[ account_number [...]]"
-	$$ docker run -e AARDVARK_ACCOUNTS --rm aardvark-collector
-	$$ docker run -p 127.0.0.1:80:5000 aardvark-apiserver
+    $$ make clean-all
+    $$ make aardvark-all
+    $$ export AARDVARK_ACCOUNTS="<account_number>[ account_number [...]]"
+    $$ docker run -e AARDVARK_ACCOUNTS --rm aardvark-collector
+    $$ docker run -p 127.0.0.1:80:5000 aardvark-apiserver
 
 
 Using an RDS database
 -----------------------------------------------------------
-	$$ export AARDVARK_DB_URI="<database URI>"
-	$$ make clean-all
-	$$ make aardvark-all
-	$$ docker run --rm aardvark-collector
-	$$ docker run -p 127.0.0.1:80:5000 aardvark-apiserver
+    $$ export AARDVARK_DB_URI="<database URI>"
+    $$ make clean-all
+    $$ make aardvark-all
+    $$ docker run --rm aardvark-collector
+    $$ docker run -p 127.0.0.1:80:5000 aardvark-apiserver
 
 
 Using a local sqlite database *
 -----------------------------------------------------------
-	$$ make clean-all
-	$$ make aardvark-sqlite
-	$$ export AARDVARK_API_PORT="5000"
-	$$ docker run -v aardvark-data:/usr/share/aardvark-data --rm aardvark-collector
-	$$ docker run -v aardvark-data:/usr/share/aardvark-data -p 127.0.0.1:80:$$AARDVARK_API_PORT aardvark-apiserver
+    $$ make clean-all
+    $$ make aardvark-sqlite
+    $$ export AARDVARK_API_PORT="5000"
+    $$ docker run -v aardvark-data:/usr/share/aardvark-data --rm aardvark-collector
+    $$ docker run -v aardvark-data:/usr/share/aardvark-data -p 127.0.0.1:80:5000 aardvark-apiserver
 
-	* Shown with a parameter for completeness. The API server will be listening
-	  on the port specified by the AARDVARK_API_PORT environment variable. The
-	  default is 5000, so the environment variable is not necessary if the
-	  apiserver container is started with "-p 127.0.0.1:80:5000".
-
-	* The shared volume mount point "/usr/share/aardvark-data" is created by
-	  the build process and must be specified when launching both the
-	  collector and the apiserver containers.
+    * The shared volume mount point "/usr/share/aardvark-data" is created when
+      the docker images are built and must be specified when launching both the
+      collector and the apiserver containers.
 
 
 Running the collector container with AWS IAM credentials *
 -----------------------------------------------------------
 
-	$$ export AWS_ACCESS_KEY_ID=<aws_access_key_id>
-	$$ export AWS_SECRET_ACCESS_KEY=<aws_secret_access_key>
-	$$ docker run -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY --rm aardvark-collector
+    $$ export AWS_ACCESS_KEY_ID=<aws_access_key_id>
+    $$ export AWS_SECRET_ACCESS_KEY=<aws_secret_access_key>
+    $$ docker run -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY --rm aardvark-collector
 
-    * Of course, do not save the AWS IAM credentials anywhere other than a
-      properly configured secrets management system.
+    * The underlying boto3 library will automatically use the credentials it
+      finds in the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment
+      variables.
+
+      Be aware that setting these in the container runtime environment makes
+      them visible to anyone who can attach a shell to the running container,
+      but does not make them visible in the underlying image or its history.
+
+      Of course, do not save the AWS IAM credentials anywhere other than your
+      .aws/credentials file.
 
 
 endef
