@@ -232,11 +232,11 @@ PHANTOMJS_ARCHIVE = $(PHANTOMJS_VERSION).tar.bz2
 # They are among those removed by "make clean".
 # - - - - - - - - - - - - - - - -
 ARTIFACTS_DIR = artifacts
-AARDVARK_BASE_DOCKER_BUILD_PSEUDO = $(ARTIFACTS_DIR)/aardvark-base-docker-build
-AARDVARK_DATA_DOCKER_BUILD_PSEUDO = $(ARTIFACTS_DIR)/aardvark-data-docker-build
-AARDVARK_DATA_DOCKER_RUN_PSEUDO = $(ARTIFACTS_DIR)/aardvark-data-docker-run
-AARDVARK_APISERVER_DOCKER_BUILD_PSEUDO = $(ARTIFACTS_DIR)/aardvark-apiserver-docker-build
-AARDVARK_COLLECTOR_DOCKER_BUILD_PSEUDO = $(ARTIFACTS_DIR)/aardvark-collector-docker-build
+AARDVARK_BASE_DOCKER_BUILD_PSEUDO = $(ARTIFACTS_DIR)/aardvark-base-docker-build-$(AARDVARK_IMAGES_TAG)
+AARDVARK_DATA_DOCKER_BUILD_PSEUDO = $(ARTIFACTS_DIR)/aardvark-data-docker-build-$(AARDVARK_IMAGES_TAG)
+AARDVARK_DATA_DOCKER_RUN_PSEUDO = $(ARTIFACTS_DIR)/aardvark-data-docker-run-$(AARDVARK_IMAGES_TAG)
+AARDVARK_APISERVER_DOCKER_BUILD_PSEUDO = $(ARTIFACTS_DIR)/aardvark-apiserver-docker-build-$(AARDVARK_IMAGES_TAG)
+AARDVARK_COLLECTOR_DOCKER_BUILD_PSEUDO = $(ARTIFACTS_DIR)/aardvark-collector-docker-build-$(AARDVARK_IMAGES_TAG)
 
 # - - - - - - - - - - - - - - - -
 # These are removed by "make clean".
@@ -331,6 +331,7 @@ $(AARDVARK_COLLECTOR_DOCKER_BUILD_PSEUDO):
 	docker build \
 		-t "aardvark-collector$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi)" \
 		-f Dockerfile.collector \
+		--build-arg AARDVARK_IMAGES_TAG=$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo "$$AARDVARK_IMAGES_TAG"; fi) \
 		.; \
 	AARDVARK_COLLECTOR_IMAGE_LS=$$(docker image ls | egrep "aardvark-collector *$$AARDVARK_IMAGES_TAG"); \
 	mkdir -p $(ARTIFACTS_DIR); \
@@ -344,6 +345,7 @@ $(AARDVARK_APISERVER_DOCKER_BUILD_PSEUDO):
 	docker build \
 		-t "aardvark-apiserver$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi)" \
 		-f Dockerfile.apiserver \
+		--build-arg AARDVARK_IMAGES_TAG=$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo "$$AARDVARK_IMAGES_TAG"; fi) \
 		.; \
 	AARDVARK_APISERVER_IMAGE_LS=$$(docker image ls | egrep "aardvark-apiserver *$$AARDVARK_IMAGES_TAG"); \
 	mkdir -p $(ARTIFACTS_DIR); \
@@ -369,6 +371,7 @@ $(AARDVARK_DATA_DOCKER_BUILD_PSEUDO): $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO)
 	docker build \
 		-t "aardvark-data-init$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi)" \
 		-f Dockerfile.initialize-local-data-volume  \
+		--build-arg AARDVARK_IMAGES_TAG=$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo "$$AARDVARK_IMAGES_TAG"; fi) \
 		--build-arg AARDVARK_DATA_DIR=$(AARDVARK_DATA_DIR) \
 		.; \
 	AARDVARK_DATA_INIT_IMAGE_LS=$$(docker image ls | egrep "aardvark-data-init *$$AARDVARK_IMAGES_TAG"); \

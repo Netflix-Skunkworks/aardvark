@@ -1,5 +1,6 @@
 
-FROM aardvark-base
+ARG AARDVARK_IMAGES_TAG=latest
+FROM aardvark-base:${AARDVARK_IMAGES_TAG}
 
 LABEL author="scottbrown0001@gmail.com"
 

@@ -27,6 +27,15 @@ logger.setLevel(logging.WARNING)
 # logger.setLevel(logging.DEBUG)
 logger.addHandler(shandler)
 
+# These need to be removed from the test run environment if present
+# before configuring the environment for the pexpect call to the make
+# process.
+BUILD_CONTROL_ENV_VARIABLES = [
+    'AARDVARK_ROLE',
+    'AARDVARK_DB_URI',
+    'SWAG_BUCKET'
+    ]
+
 # We'll copy the docker directory contents to the temporary working
 # directory each time.
 DOCKER_PATH = os.path.join(
@@ -35,6 +44,8 @@ DOCKER_PATH = os.path.join(
     )
 
 # An index of possible docker images and their pseudo-artifacts.
+# TODO: Preserved for reference purposes; the DOCKER_IMAGES variable
+# isn't used as of this commenting.
 DOCKER_IMAGES = {
     'aardvark-base': 'aardvark-base-docker-build',
     'aardvark-data-volume': 'aardvark-data-docker-build',
@@ -47,8 +58,14 @@ DOCKER_IMAGES = {
 # are created.
 ARTIFACT_DIRECTORY = 'artifacts'
 
+# A few constants that are checked when testing container
+# config settings.
 CONTAINER_CONFIG_PATH = '/etc/aardvark/config.py'
 CONTAINER_PHANTOMJS_PERMS = 'rwxr-xr-x'
+
+EXPECTED_SQLITE_DB_URI = 'sqlite:////usr/share/aardvark-data/aardvark.db'
+EXPECTED_PHANTOMJS_PATH = '/usr/local/bin/phantomjs'
+EXPECTED_SQL_TRACK_MODS = False
 
 # Making targets can take some time, and depends on network connection
 # speed. Set the NETWORK_SPEED_FACTOR environment variable to increase
@@ -64,9 +81,13 @@ PEXPECT_TIMEOUTS = {
     }
 NETWORK_SPEED_FACTOR = 1.0
 
-EXPECTED_SQLITE_DB_URI = 'sqlite:////usr/share/aardvark-data/aardvark.db'
-EXPECTED_PHANTOMJS_PATH = '/usr/local/bin/phantomjs'
-EXPECTED_SQL_TRACK_MODS = False
+# The key that will uniquely identify a docker construct of the
+# indicated type.
+UID_KEY = {
+    'image': 'id',
+    'container': 'id',
+    'volume': 'name'
+    }
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -161,9 +182,17 @@ class TestDockerBase(unittest.TestCase):
     def setUpClass(cls):
         '''Test case class common fixture setup.'''
 
-        cls.original_docker_images = cls.get_docker_image_list()
-        cls.original_docker_containers = cls.get_docker_container_list()
-        cls.original_docker_volumes = cls.get_docker_volume_list()
+        # These will record the constructs at class start; we'll log
+        # any discrepancy at class termination.
+        cls.constructs = {'original': {}, 'current': {}}
+
+        for construct_type in ['image', 'container', 'volume']:
+            cls.constructs['original'][construct_type] = (
+                cls.get_docker_constructs(construct_type)
+                )
+            cls.constructs['current'][construct_type] = list(
+                cls.constructs['original'][construct_type]
+                )
 
         cls.tmpdir = tempfile.mkdtemp()
 
@@ -178,6 +207,41 @@ class TestDockerBase(unittest.TestCase):
         os.chdir(cls.original_working_dir)
         cls.clean_tmpdir()
         os.rmdir(cls.tmpdir)
+
+        cls.warn_on_hanging_constructs()
+
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    @classmethod
+    def warn_on_hanging_constructs(cls):
+        '''Log warnings for undeleted docker constructs created by tests.'''
+
+        construct_fields = {
+            'container': ['id', 'name'],
+            'image': ['id', 'name', 'tag'],
+            'volume': ['name'],
+            }
+
+        hanging_constructs = {}
+
+        for construct_type in construct_fields.keys():
+
+            hanging_constructs[construct_type] = [
+                c for c in cls.constructs['current'][construct_type]
+                if c[UID_KEY[construct_type]] not in [
+                    x[UID_KEY[construct_type]]
+                    for x in cls.constructs['original'][construct_type]
+                    ]
+                ]
+
+            for construct in hanging_constructs[construct_type]:
+                logger.warning(
+                    'a failed test case left behind %s:\t%s',
+                    construct_type,
+                    '\t'.join([
+                        construct[field]
+                        for field in construct_fields[construct_type]
+                        ])
+                    )
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @classmethod
@@ -228,78 +292,18 @@ class TestDockerBase(unittest.TestCase):
 
         logger.info("======= tearDown: %s", self.delete_artifacts)
 
+        self.log_docker_constructs()
+
+        new_containers = self.new_constructs('container')
+        new_images = self.new_constructs('image')
+        new_volumes = self.new_constructs('volume')
+
         if self.delete_artifacts:
-
             # Every case should clean up its docker images and containers.
-            new_containers = [
-                c for c in self.get_docker_container_list()
-                if c['id'] not in [
-                    x['id'] for x in self.original_docker_containers
-                    ]
-                ]
 
-            new_images = [
-                i for i in self.get_docker_image_list()
-                if i['id'] not in [
-                    x['id'] for x in self.original_docker_images
-                    ]
-                ]
-
-            new_volumes = [
-                i for i in self.get_docker_volume_list()
-                if i['name'] not in [
-                    x['name'] for x in self.original_docker_volumes
-                    ]
-                ]
-
-            def log_listing(caption, records, *fields):
-                '''Helper method for log message construction.'''
-
-                return '{}:\n    '.format(caption) + '\n    '.join([
-                    '\t'.join(
-                        [record[field] for field in fields]
-                        ) for record in records
-                    ])
-            container_fields = ['id', 'name']
-            image_fields = ['id', 'name', 'tag']
-            volume_fields = ['name']
-
-            logger.info("------------containers:")
-            logger.info(log_listing(
-                'Original', self.original_docker_containers, *container_fields
-                ))
-            logger.info(log_listing(
-                'Current', self.get_docker_container_list(), *container_fields
-                ))
-            logger.info(log_listing(
-                'New', new_containers, *container_fields
-                ))
-
-            logger.info("------------images:")
-            logger.info(log_listing(
-                'Original', self.original_docker_images, *image_fields
-                ))
-            logger.info(log_listing(
-                'Current', self.get_docker_image_list(), *image_fields
-                ))
-            logger.info(log_listing(
-                'New', new_images, *image_fields
-                ))
-
-            logger.info("------------volumes:")
-            logger.info(log_listing(
-                'Original', self.original_docker_volumes, *volume_fields
-                ))
-            logger.info(log_listing(
-                'Current', self.get_docker_volume_list(), *volume_fields
-                ))
-            logger.info(log_listing(
-                'New', new_volumes, *volume_fields
-                ))
-
-            # These should have been launched with the --rm flag, so they
-            # should be removed once stopped.
             for container in new_containers:
+                # These should have been launched with the --rm flag,
+                # so they should be removed once stopped.
                 logger.info("REMOVING %s", container['id'])
                 pexpect.run('docker stop {}'.format(container['id']))
 
@@ -311,53 +315,60 @@ class TestDockerBase(unittest.TestCase):
                 logger.info("REMOVING %s", volume['name'])
                 pexpect.run('docker volume rm {}'.format(volume['name']))
 
-            self.assertItemsEqual(
-                [x['id'] for x in self.original_docker_containers],
-                [x['id'] for x in self.get_docker_container_list()]
-                )
-
-            self.assertItemsEqual(
-                [x['id'] for x in self.original_docker_images],
-                [x['id'] for x in self.get_docker_image_list()]
-                )
-
-            self.assertItemsEqual(
-                [x['name'] for x in self.original_docker_volumes],
-                [x['name'] for x in self.get_docker_volume_list()]
-                )
+        else:
+            # We'll leave behind any new docker constructs, so we need
+            # to update the "original docker volumes".
+            self.constructs['current']['container'].extend(new_containers)
+            self.constructs['current']['image'].extend(new_images)
+            self.constructs['current']['volume'].extend(new_volumes)
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    def require_filenames_in_directory(self, patterns=None, directory='.'):
-        '''Check that filenames are found in the indicated directory.
+    def log_docker_constructs(self, **kwargs):
+        '''Log docker construct status.'''
 
-        Each pattern in the list of patterns must match exactly one
-        file in the indicated directory.
+        def log_listing(caption, records, *fields):
+            '''Helper method for log message construction.'''
 
-        '''
+            return '{}:\n    '.format(caption) + '\n    '.join([
+                '\t'.join(
+                    [record[field] for field in fields]
+                    ) for record in records
+                ])
 
-        failure_string_template = (
-            'Unexpected or missing filename match result in {}'
-            ' for pattern r\'{}\':\n{}\n'
-            'Directory contents:\n{}'
-            )
+        construct_fields = {
+            'container': ['id', 'name'],
+            'image': ['id', 'name', 'tag'],
+            'volume': ['name'],
+            }
 
-        if patterns:
-            self.assertTrue(os.path.exists(directory))
-            all_filenames = os.listdir(directory)
-            for pattern in patterns:
-                matching_files = [
-                    x for x in all_filenames
-                    if re.match(pattern, x)
-                    ]
-                self.assertTrue(
-                    len(matching_files) == 1,
-                    failure_string_template.format(
-                        directory,
-                        pattern,
-                        matching_files,
-                        os.listdir(directory)
-                        )
-                    )
+        for construct_type in construct_fields.keys():
+
+            logger.info("------------%ss:", construct_type)
+            logger.info(log_listing(
+                'Original',
+                self.constructs['original'][construct_type],
+                *construct_fields[construct_type]
+                ))
+            logger.info(log_listing(
+                'Current',
+                self.get_docker_constructs(construct_type),
+                *construct_fields[construct_type]
+                ))
+            logger.info(log_listing(
+                'New',
+                self.new_constructs(construct_type),
+                *construct_fields[construct_type]
+                ))
+
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    @classmethod
+    def get_docker_constructs(cls, construct_type, *expected_constructs):
+        '''Get a list of images, containers or volumes.'''
+        return {
+            'image': cls.get_docker_image_list,
+            'container': cls.get_docker_container_list,
+            'volume': cls.get_docker_volume_list
+            }[construct_type](*expected_constructs)
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @staticmethod
@@ -449,6 +460,50 @@ class TestDockerBase(unittest.TestCase):
         return volume_list
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    def require_filenames_in_directory(self, patterns=None, directory='.'):
+        '''Check that filenames are found in the indicated directory.
+
+        Each pattern in the list of patterns must match exactly one
+        file in the indicated directory.
+
+        '''
+
+        failure_string_template = (
+            'Unexpected or missing filename match result in {}'
+            ' for pattern r\'{}\':\n{}\n'
+            'Directory contents:\n{}'
+            )
+
+        if patterns:
+            self.assertTrue(os.path.exists(directory))
+            all_filenames = os.listdir(directory)
+            for pattern in patterns:
+                matching_files = [
+                    x for x in all_filenames
+                    if re.match(pattern, x)
+                    ]
+                self.assertTrue(
+                    len(matching_files) == 1,
+                    failure_string_template.format(
+                        directory,
+                        pattern,
+                        matching_files,
+                        os.listdir(directory)
+                        )
+                    )
+
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    def new_constructs(self, construct_type):
+        '''Get a list of images, containers or volumes not already recorded.'''
+        return [
+            c for c in self.get_docker_constructs(construct_type)
+            if c[UID_KEY[construct_type]] not in [
+                o[UID_KEY[construct_type]]
+                for o in self.constructs['original'][construct_type]
+                ]
+            ]
+
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     def get_container_details(self, image):
         '''Run a docker container shell and retrieve several details.'''
 
@@ -528,10 +583,12 @@ class TestDockerBase(unittest.TestCase):
         container_details = self.get_container_details(image)
 
         clean_comparison = {
+            'image': image,
             'missing': {},
             'incorrect': {}
             }
         comparison = {
+            'image': image,
             'missing': {},
             'incorrect': {}
             }
@@ -579,10 +636,7 @@ class TestDockerBase(unittest.TestCase):
         '''Carry out common test steps.
         '''
 
-        logger.info(
-            ' -' * 24 + '\n working case: %s\n' + ' -' * 24,
-            target
-            )
+        logger.info(' -' * 8 + ' working case: %s' + ' -' * 8, target)
 
         # Unless we finish without a failure Exception, tell tearDown
         # not to clean up artifacts. We reset this below.
@@ -618,8 +672,16 @@ class TestDockerBase(unittest.TestCase):
         spawn_env = dict(
             map(
                 lambda x: x.strip().split('='),
-                pexpect.run('env').strip().split("\n"))
+                pexpect.run('env').strip().split("\n")
+                )
             )
+        # Remove any build control variables we inherit from the test
+        # environment - we want complete control over which are
+        # visible to the make process in the pexpect call.
+        spawn_env = {
+            k: v for (k, v) in spawn_env.iteritems()
+            if k not in BUILD_CONTROL_ENV_VARIABLES
+            }
 
         command = 'make {}'.format(target)
         logger.info('COMMAND: %s', command)
