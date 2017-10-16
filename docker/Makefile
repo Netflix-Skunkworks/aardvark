@@ -383,7 +383,6 @@ $(AARDVARK_DATA_DOCKER_BUILD_PSEUDO): $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO)
 
 # - - - - - - - - - - - - - - - -
 $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO): $(PREREQUISITES)
-
 	docker build \
 		-t "aardvark-base$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi)" \
 		-f Dockerfile.aardvark-base \
