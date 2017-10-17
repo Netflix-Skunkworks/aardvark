@@ -33,7 +33,8 @@ logger.addHandler(shandler)
 BUILD_CONTROL_ENV_VARIABLES = [
     'AARDVARK_ROLE',
     'AARDVARK_DB_URI',
-    'SWAG_BUCKET'
+    'SWAG_BUCKET',
+    'AARDVARK_IMAGES_TAG'
     ]
 
 # We'll copy the docker directory contents to the temporary working
@@ -88,6 +89,13 @@ UID_KEY = {
     'container': 'id',
     'volume': 'name'
     }
+
+# A message for unittest.skipIf.
+SKIP_NO_IMAGES_TAG_MSG = (
+    "Remove aardvark-*:latest images and the aardvark-data volume as desired"
+    " and set the RUN_AARDVARK_DOCKER_TESTS_NO_IMAGES_TAG environment variable"
+    " to 1 to enable tests that don't set the AARDVARK_IMAGES_TAG."
+    )
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -625,13 +633,13 @@ class TestDockerBase(unittest.TestCase):
     def case_worker(
             self,
             target,
-            images_tag=None,
             expected_artifacts=None,
             expected_docker_images=None,
             expected_details=None,
             expect_phantom=True,
             expect_aardvark=True,
-            add_env=None
+            add_env=None,
+            set_images_tag=True,
             ):
         '''Carry out common test steps.
         '''
@@ -644,8 +652,12 @@ class TestDockerBase(unittest.TestCase):
 
         # A unique string to add to certain test case artifact names
         # to avoid clobbering/colliding.
-        images_tag = images_tag or self.testcase_tag
-        logger.info('Test case images tag is %s', images_tag)
+        if set_images_tag:
+            images_tag = self.testcase_tag
+            logger.info('Test case images tag is %s', images_tag)
+        else:
+            images_tag = 'latest'
+            logger.info('Default test case images tag will be "latest"')
 
         expected_artifacts = expected_artifacts or []
         expected_docker_images = expected_docker_images or []
@@ -665,7 +677,9 @@ class TestDockerBase(unittest.TestCase):
 
         # Environment variables to add to the pexpect interaction with
         # containers.
-        add_env = dict(add_env or {}, AARDVARK_IMAGES_TAG=images_tag)
+        add_env = dict(add_env or {})
+        if set_images_tag:
+            add_env = dict(add_env, AARDVARK_IMAGES_TAG=images_tag)
 
         # Fetch the default environment settings so we can update
         # those with specific case settings.
@@ -864,6 +878,42 @@ class TestDockerContainerConstruction(TestDockerBase):
             )
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    @unittest.skipIf(
+        not os.environ.get('RUN_AARDVARK_DOCKER_TESTS_NO_IMAGES_TAG'),
+        SKIP_NO_IMAGES_TAG_MSG
+        )
+    def test_make_aardvark_all_no_images_tag(self):
+        '''Test "make aardvark-all" without specifying the images tag.'''
+
+        self.case_worker(
+            target='aardvark-all',
+            expected_docker_images=[
+                'aardvark-base',
+                'aardvark-collector',
+                'aardvark-apiserver',
+                ],
+            expected_details={
+                '_common': {
+                    'pwd': '/usr/share/aardvark-data',
+                    'NUM_THREADS': 5,
+                    'PHANTOMJS': EXPECTED_PHANTOMJS_PATH,
+                    'ROLENAME': 'Aardvark',
+                    'SQLALCHEMY_DATABASE_URI': EXPECTED_SQLITE_DB_URI,
+                    'SQLALCHEMY_TRACK_MODIFICATIONS': EXPECTED_SQL_TRACK_MODS,
+                    },
+                'aardvark-base': {
+                    'pwd': '/etc/aardvark',
+                    },
+                },
+            expected_artifacts=[
+                'aardvark-base-docker-build',
+                'aardvark-apiserver-docker-build',
+                'aardvark-collector-docker-build',
+                ],
+            set_images_tag=False
+            )
+
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     def test_make_aardvark_sqlite(self):
         '''Test "make aardvark-sqlite".'''
 
@@ -895,6 +945,45 @@ class TestDockerContainerConstruction(TestDockerBase):
                 'aardvark-apiserver-docker-build',
                 'aardvark-collector-docker-build',
                 ],
+            )
+
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    @unittest.skipIf(
+        not os.environ.get('RUN_AARDVARK_DOCKER_TESTS_NO_IMAGES_TAG'),
+        SKIP_NO_IMAGES_TAG_MSG
+        )
+    def test_make_aardvark_sqlite_no_images_tag(self):
+        '''Test "make aardvark-sqlite" without specifying the images tag.'''
+
+        self.case_worker(
+            target='aardvark-sqlite',
+            expected_docker_images=[
+                'aardvark-base',
+                'aardvark-data-init',
+                'aardvark-collector',
+                'aardvark-apiserver',
+                ],
+            expected_details={
+                '_common': {
+                    'pwd': '/usr/share/aardvark-data',
+                    'NUM_THREADS': 5,
+                    'PHANTOMJS': EXPECTED_PHANTOMJS_PATH,
+                    'ROLENAME': 'Aardvark',
+                    'SQLALCHEMY_DATABASE_URI': EXPECTED_SQLITE_DB_URI,
+                    'SQLALCHEMY_TRACK_MODIFICATIONS': EXPECTED_SQL_TRACK_MODS,
+                    },
+                'aardvark-base': {
+                    'pwd': '/etc/aardvark',
+                    },
+                },
+            expected_artifacts=[
+                'aardvark-base-docker-build',
+                'aardvark-data-docker-build',
+                'aardvark-data-docker-run',
+                'aardvark-apiserver-docker-build',
+                'aardvark-collector-docker-build',
+                ],
+            set_images_tag=False
             )
 
 

@@ -331,7 +331,7 @@ $(AARDVARK_COLLECTOR_DOCKER_BUILD_PSEUDO):
 	docker build \
 		-t "aardvark-collector$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi)" \
 		-f Dockerfile.collector \
-		--build-arg AARDVARK_IMAGES_TAG=$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo "$$AARDVARK_IMAGES_TAG"; fi) \
+		--build-arg AARDVARK_IMAGES_TAG=$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo "$$AARDVARK_IMAGES_TAG"; else echo "latest"; fi) \
 		.; \
 	AARDVARK_COLLECTOR_IMAGE_LS=$$(docker image ls | egrep "aardvark-collector *$$AARDVARK_IMAGES_TAG"); \
 	mkdir -p $(ARTIFACTS_DIR); \
@@ -345,7 +345,7 @@ $(AARDVARK_APISERVER_DOCKER_BUILD_PSEUDO):
 	docker build \
 		-t "aardvark-apiserver$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi)" \
 		-f Dockerfile.apiserver \
-		--build-arg AARDVARK_IMAGES_TAG=$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo "$$AARDVARK_IMAGES_TAG"; fi) \
+		--build-arg AARDVARK_IMAGES_TAG=$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo "$$AARDVARK_IMAGES_TAG"; else echo "latest"; fi) \
 		.; \
 	AARDVARK_APISERVER_IMAGE_LS=$$(docker image ls | egrep "aardvark-apiserver *$$AARDVARK_IMAGES_TAG"); \
 	mkdir -p $(ARTIFACTS_DIR); \
@@ -361,7 +361,7 @@ $(AARDVARK_DATA_DOCKER_RUN_PSEUDO): $(AARDVARK_DATA_DOCKER_BUILD_PSEUDO)
 		echo "Using existing aardvark-data docker volume"; \
 		echo "Using existing aardvark-data docker volume" > $(AARDVARK_DATA_DOCKER_RUN_PSEUDO); \
 	else \
-		docker volume create aardvark-data; \
+		docker volume create aardvark-data$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo "-$$AARDVARK_IMAGES_TAG"; fi); \
 		rm -f $(AARDVARK_DATA_DOCKER_RUN_PSEUDO); \
 		docker run -v aardvark-data$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo "-$$AARDVARK_IMAGES_TAG"; fi):$(AARDVARK_DATA_DIR) --rm aardvark-data-init$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi); \
 		echo "initialized data directory $(AARDVARK_DATA_DIR)" > $(AARDVARK_DATA_DOCKER_RUN_PSEUDO); \
@@ -371,7 +371,7 @@ $(AARDVARK_DATA_DOCKER_BUILD_PSEUDO): $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO)
 	docker build \
 		-t "aardvark-data-init$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo ":$$AARDVARK_IMAGES_TAG"; fi)" \
 		-f Dockerfile.initialize-local-data-volume  \
-		--build-arg AARDVARK_IMAGES_TAG=$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo "$$AARDVARK_IMAGES_TAG"; fi) \
+		--build-arg AARDVARK_IMAGES_TAG=$$(if [ -n "$$AARDVARK_IMAGES_TAG" ] ; then echo "$$AARDVARK_IMAGES_TAG"; else echo "latest"; fi) \
 		--build-arg AARDVARK_DATA_DIR=$(AARDVARK_DATA_DIR) \
 		.; \
 	AARDVARK_DATA_INIT_IMAGE_LS=$$(docker image ls | egrep "aardvark-data-init *$$AARDVARK_IMAGES_TAG"); \
