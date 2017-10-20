@@ -32,8 +32,12 @@ endef
 
 define HELPINTERLUDE1
 
+    The aardvark-sqlite build includes all the products from the aardvark-all
+    build, and additionally creates and initializes a shared data volume for
+    the sqlite database.
+
     See below for examples and for environment variable settings required to
-    properly configure your aardvark deployment and use.
+    properly configure your aardvark containers build and deployment.
 
 
 Remove intermediate and final files and/or docker images with the following
@@ -73,17 +77,17 @@ Note:
 Environment Variables
 =====================
 
-A number of build-time and run-time configuration options are controlled with
+A number of build time and run-time configuration options are controlled with
 environment variables.
 
 
-Configuration build-time environment variables are passed to aardvark-config
+Configuration build time environment variables are passed to aardvark-config
 when the base images for the aardvark collector and aardvark apiserver
 containers are built.
 
                         aardvark
 Configuration           config
-build-time Variable     Parameter       Notes
+Build Time Variable     Parameter       Notes
 -------------------     ---------       ---------------------------------------
 AARDVARK_DB_URI         db-uri          Required when not using a local mysql
                                         database.
@@ -91,7 +95,7 @@ AARDVARK_DB_URI         db-uri          Required when not using a local mysql
 AARDVARK_ROLE           aardvark-role   Required if the sts:AssumeRole for
                                         aardvark is not named "Aardvark".
 
-SWAG_BUCKET             swag-bucket     Required when using swag.
+SWAG_BUCKET             swag-bucket     Required when using SWAG.
 
 Note that if set the values of these environment variables are automatically
 picked up by the make process without any explicit passing of parameters.
@@ -102,9 +106,11 @@ apiserver containers.
 
 Runtime Variable        Used by         Notes
 -------------------     ---------       ---------------------------------------
-AARDVARK_ACCOUNTS       collector       Required if not using swag. Set this to
-                                        a list of AWS account numbers from
-                                        which to collect Access Advisor records.
+AARDVARK_ACCOUNTS       collector       Optional if using SWAG, otherwise
+                                        required. Set this to a list of SWAG
+                                        account name tags or a list of AWS
+                                        account numbers from which to collect
+                                        Access Advisor records.
 
 AWS_ACCESS_KEY_ID       collector       Required if not running on an EC2
 AWS_SECRET_ACCESS_KEY   collector       instance with an appropriate Instance
@@ -128,10 +134,10 @@ Note that these values must be explicitly specified on the "docker run" command
 line when launching containers.
 
 
-Customization build-time variables control other aspects of the build process.
+Customization build time variables control other aspects of the build process.
 
 Customization
-build-time Variable     Notes
+Build Time Variable     Notes
 -------------------     ------------------------------------------------------
 AARDVARK_IMAGES_TAG     A common tag to apply to the docker images and volumes
                         created by the build process.
@@ -147,56 +153,70 @@ AARDVARK_IMAGES_TAG     A common tag to apply to the docker images and volumes
 Examples
 ========
 
-Using swag
+
+A typical production deployment
 -----------------------------------------------------------
+
+    Here we see the settings and build steps to create and run a typical
+    production deployment, using SWAG and an RDS database, on an EC2 instance
+    with an instance profile granting the required sts::AssumeRole permissions.
+
+    $$ export AARDVARK_ROLE="<MyAardvarkRoleName>"
+    $$ export AARDVARK_DB_URI="<database URI>"
     $$ export SWAG_BUCKET="<swag-bucket-name>"
     $$ make clean-all
     $$ make aardvark-all
-    $$ docker run --rm aardvark-collector
-    $$ docker run -p 127.0.0.1:80:5000 aardvark-apiserver
+    $$ docker run -v aardvark-data:/usr/share/aardvark-data --rm aardvark-collector
+    $$ docker run -v aardvark-data:/usr/share/aardvark-data \\
+      -p 127.0.0.1:80:5000 aardvark-apiserver
+
+    * The SWAG_BUCKET build time environment variable is set so that aardvark
+      will be configured to use SWAG.
+
+    * The AARDVARK_DB_URI build time environment variable is set to point to
+      the appropriate external database.
+
+    * With SWAG the AARDVARK_ACCOUNTS runtime environment variable is optional.
+      Set it to a list of SWAG account name tags to collect from or leave it
+      undefined to collect from all accounts known to SWAG.
 
 
-Without swag
+A typical standalone or test deployment
 -----------------------------------------------------------
-    $$ make clean-all
-    $$ make aardvark-all
-    $$ export AARDVARK_ACCOUNTS="<account_number>[ account_number [...]]"
-    $$ docker run -e AARDVARK_ACCOUNTS --rm aardvark-collector
-    $$ docker run -p 127.0.0.1:80:5000 aardvark-apiserver
 
+    Here we see the settings and build steps to create and run a typical
+    deployment in a standalone environment such as might be used for local
+    testing.
 
-Using an RDS database
------------------------------------------------------------
-    $$ export AARDVARK_DB_URI="<database URI>"
-    $$ make clean-all
-    $$ make aardvark-all
-    $$ docker run --rm aardvark-collector
-    $$ docker run -p 127.0.0.1:80:5000 aardvark-apiserver
-
-
-Using a local sqlite database *
------------------------------------------------------------
+    $$ export AARDVARK_ROLE="<MyAardvarkRoleName>"
     $$ make clean-all
     $$ make aardvark-sqlite
-    $$ export AARDVARK_API_PORT="5000"
-    $$ docker run -v aardvark-data:/usr/share/aardvark-data --rm aardvark-collector
-    $$ docker run -v aardvark-data:/usr/share/aardvark-data -p 127.0.0.1:80:5000 aardvark-apiserver
-
-    * The shared volume mount point "/usr/share/aardvark-data" is created when
-      the docker images are built and must be specified when launching both the
-      collector and the apiserver containers.
-
-
-Running the collector container with AWS IAM credentials *
------------------------------------------------------------
-
     $$ export AWS_ACCESS_KEY_ID=<aws_access_key_id>
     $$ export AWS_SECRET_ACCESS_KEY=<aws_secret_access_key>
-    $$ docker run -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY --rm aardvark-collector
+    $$ export AARDVARK_ACCOUNTS="<account_number>[ account_number [...]]"
+    $$ docker run -v aardvark-data:/usr/share/aardvark-data \\
+      -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY \\
+      -e AARDVARK_ACCOUNTS --rm aardvark-collector
+    $$ docker run -v aardvark-data:/usr/share/aardvark-data \\
+      -p 127.0.0.1:80:5000 aardvark-apiserver
+
+    * The AARDVARK_ACCOUNTS runtime environment variable is used to pass one or
+      more AWS account numbers directly to the aardvark-collector container.
+
+    * In contrast to running on an EC2 instance configured with an Instance
+      Profile that provides the collector with necessary sts::AssumeRole
+      permissions, the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY runtime
+      environment variables are set to specify an AWS IAM user with the
+      necessary permissions.
+
+    * At runtime the aardvark-data shared volume providing a local sqlite
+      database is mounted on both the collector and the apiserver. The mount
+      point "/usr/share/aardvark-data" is created when the docker images are
+      built.
 
     * The underlying boto3 library will automatically use the credentials it
-      finds in the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment
-      variables.
+      finds in the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY runtime
+      environment variables.
 
       Be aware that setting these in the container runtime environment makes
       them visible to anyone who can attach a shell to the running container,
@@ -293,18 +313,18 @@ aardvark-sqlite $(AARDVARK_DATA_DOCKER_RUN_PSEUDO): AARDVARK_DATA_DIR = /usr/sha
 # have no (real or stand-in) targets and should not be used as
 # dependencies as this will always trigger upstream rebuilds.
 # - - - - - - - - - - - - - - - -
-aardvark-all: $(AARDVARK_SERVICE)		## Build the aardvark collector and apiserver docker images.
-aardvark-sqlite: $(AARDVARK_DATA_DOCKER_RUN_PSEUDO) $(AARDVARK_SERVICE) ## Build the collector and apiserver images and initialize a shared volume sqlite database.
+aardvark-all: $(AARDVARK_SERVICE)		## Build the collector and apiserver docker images.
+aardvark-sqlite: $(AARDVARK_DATA_DOCKER_RUN_PSEUDO) $(AARDVARK_SERVICE) ## Build aardvark-all and a shared volume sqlite database.
 aardvark-apiserver: $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO) $(AARDVARK_APISERVER_DOCKER_BUILD_PSEUDO)		## Build the aardvark apiserver docker image.
 aardvark-collector: $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO) $(AARDVARK_COLLECTOR_DOCKER_BUILD_PSEUDO)		## Build the aardvark collector docker image.
-aardvark-data-volume: $(AARDVARK_DATA_DOCKER_RUN_PSEUDO)		## Create and initialize the aardvark local sqlite database shared volume.
+aardvark-data-volume: $(AARDVARK_DATA_DOCKER_RUN_PSEUDO)		## Create and initialize the sqlite database shared volume.
 aardvark-base: $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO)	## Create the base docker image for subsequent aardvark images.
-prerequisites: $(PREREQUISITES)		## Fetch the phantomjs package and the aardvark repository if not present.
+prerequisites: $(PREREQUISITES)		## Fetch the phantomjs package and aardvark repository if not present.
 
 # - - - - - - - - - - - - - - - -
 .PHONY: clean clean-docker clean-all help
 
-clean:		## Remove build artifacts (intermediate, target and pseudo-target files and directories).
+clean:		## Remove intermediate, target and pseudo-target files and directories.
 	-rm -rf $(ALL_CLEANUP)
 
 clean-docker:		## Remove existing docker images (prompts for confirmation).
