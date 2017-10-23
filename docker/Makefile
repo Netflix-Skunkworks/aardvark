@@ -72,6 +72,10 @@ Note:
       aardvark-data-volume target, a new aardvark-data-$$AARDVARK_IMAGES_TAG
       volume will be created if it does not already exist.
 
+    * When the "true" make targets are docker images, "pseudo" target files are
+      created in the artifacts directory. These pseudo-targets are what the
+      "make clean" command removes; the actual docker images will be removed
+      by "make clean-docker".
 
 
 Environment Variables
