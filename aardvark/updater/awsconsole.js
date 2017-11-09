@@ -52,7 +52,7 @@ var getSessionCookies = function(token) {
         if(statusCode < 400) {
             console.log('Successfully logged in')
             page.includeJs(
-                "https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js",
+                "https://code.jquery.com/jquery-3.2.1.min.js",
                 function() {
                     page.evaluate(advisor, arns);
                 }
