@@ -38,7 +38,7 @@ install_requires = [
     'psycopg2==2.7.1',
     'pytz==2017.2',
     'subprocess32==3.2.7',
-    'swag-client==0.2.12',
+    'swag-client==0.2.13',
     'tqdm==4.11.2'
 ]
 
