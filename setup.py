@@ -35,7 +35,7 @@ install_requires = [
     'Flask-Script==2.0.5',
     'flasgger==0.6.3',
     'gunicorn==19.7.1',
-    'psycopg2==2.7.1',
+    'psycopg2==2.7.4',
     'pytz==2017.2',
     'subprocess32==3.2.7',
     'swag-client==0.2.10',
