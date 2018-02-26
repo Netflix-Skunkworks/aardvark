@@ -73,7 +73,8 @@ class AdvisorData(db.Model):
             item = AdvisorData.query.filter(AdvisorData.item_id == item_id).filter(AdvisorData.serviceNamespace ==
                                                                                    serviceNamespace).scalar()
         except sqlalchemy.exc.SQLAlchemyError as e:
-            current_app.logger.error('Database error: {}'.format(e.message))
+            current_app.logger.error('Database error: {} item_id: {} serviceNamespace: {}'.format(e.message, item_id,
+                                     serviceNamespace))
 
         if not item:
             item = AdvisorData(item_id=item_id,
