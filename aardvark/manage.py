@@ -16,6 +16,16 @@ from swag_client.util import parse_swag_config_options
 from aardvark import create_app, db
 from aardvark.updater import AccountToUpdate
 
+try:               # Python 2
+    raw_input
+except NameError:  # Python 3
+    raw_input = input
+
+try:               # Python 2
+    unicode
+except NameError:  # Python 3
+    unicode = str
+
 manager = Manager(create_app)
 
 ACCOUNT_QUEUE = Queue.Queue()
