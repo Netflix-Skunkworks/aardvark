@@ -191,7 +191,8 @@ def load_configfile(cmdline_option_spec):
     '''Evaluate the config values for the fields in cmdline_option_spec.'''
 
     all_config = {}
-    execfile(CONFIG_FILENAME, all_config)
+    with open(CONFIG_FILENAME) as in_file:
+        exec(in_file.read(), all_config)
     # print all_config.keys()
     found_config = dict([
         (k, v['getval'](all_config.get(v['config_key'])))
