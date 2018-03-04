@@ -54,7 +54,7 @@ def sqlite_regex_match(element, compiler, **kw):
     operator = element.operator.opstring
     try:
         func_name, _ = SQLITE_REGEX_FUNCTIONS[operator]
-    except (KeyError, ValueError), e:
+    except (KeyError, ValueError) as e:
         would_be_sql_string = ' '.join((compiler.process(element.left),
                                         operator,
                                         compiler.process(element.right)))
