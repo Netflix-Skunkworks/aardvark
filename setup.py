@@ -39,7 +39,7 @@ install_requires = [
     'pytz==2017.2',
     'subprocess32==3.2.7',
     'swag-client==0.2.9',
-    'tqdm==4.19.6'
+    'tqdm==4.19.7'
 ]
 
 tests_require = [
