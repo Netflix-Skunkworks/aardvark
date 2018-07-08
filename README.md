@@ -23,7 +23,8 @@ python setup.py develop
  - libpq-dev
 
 **Note**: Aardvark requires at least phantomjs 2.1.1.  We've seen odd behavior running with older versions. In order to use phanton_js you will need to set the env variable as described below, otherwise it will try to open in interactive mode and probably it will not properly work:
- ```export QT_QPA_PLATFORM=offscreen
+ ```bash
+ export QT_QPA_PLATFORM=offscreen
  ```
 
 ## Configure Aardvark
