@@ -21,8 +21,11 @@ python setup.py develop
 ### Known Dependencies
  - [PhantomJS*](http://phantomjs.org/download.html)
  - libpq-dev
- 
-**Note**: Aardvark requires at least phantomjs 2.1.1.  We've seen odd behavior running with older versions.
+
+**Note**: Aardvark requires at least phantomjs 2.1.1.  We've seen odd behavior running with older versions. In order to use phanton_js you will need to set the env variable as described below, otherwise it will try to open in interactive mode and probably it will not properly work:
+ ```bash
+ export QT_QPA_PLATFORM=offscreen
+ ```
 
 ## Configure Aardvark
 
@@ -34,8 +37,8 @@ Aardvark can use SWAG to look up accounts. https://github.com/Netflix-Skunkworks
 Do you use SWAG to track accounts? [yN]: no
 ROLENAME: Aardvark
 DATABASE [sqlite:////home/github/aardvark/aardvark.db]:
-# Threads [5]: 
-Path to phantomjs: 
+# Threads [5]:
+Path to phantomjs:
 
 >> Writing to config.py
 ```
