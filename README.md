@@ -77,6 +77,8 @@ iam:ListGroups
 
 So if you are monitoring `n` accounts, you will always need `n+1` roles. (`n` AardvarkRoles and `1` AardvarkInstanceProfile).
 
+Note: For locally running aardvark, you don't have to take care of the AardvarkInstanceProfile. Instead, just attach a policy which contains "sts:AssumeRole" to the user you are using on the AWS CLI to assume Aardvark Role. Also, the same user should be mentioned in the trust policy of Aardvark Role for proper assignment of the privileges.
+
 ## Gather Access Advisor Data
 
 You'll likely want to refresh the Access Advisor data regularly.  We recommend running the `update` command about once a day.  Cron works great for this.
