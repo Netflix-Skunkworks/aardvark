@@ -69,6 +69,9 @@ class AdvisorData(db.Model):
     @staticmethod
     def create_or_update(item_id, lastAuthenticated, serviceName, serviceNamespace, lastAuthenticatedEntity,
                          totalAuthenticatedEntities):
+        serviceName = serviceName[:128]
+        serviceNamespace = serviceNamespace[:64]
+        item = None
         try:
             item = AdvisorData.query.filter(AdvisorData.item_id == item_id).filter(AdvisorData.serviceNamespace ==
                                                                                    serviceNamespace).scalar()
