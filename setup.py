@@ -37,7 +37,6 @@ install_requires = [
     'gunicorn==19.7.1',
     'psycopg2~=2.7.4',
     'pytz==2017.2',
-    'subprocess32==3.2.7',
     'swag-client==0.2.10',
     'tqdm==4.11.2'
 ]

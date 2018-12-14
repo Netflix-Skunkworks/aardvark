@@ -35,7 +35,6 @@ UPDATE_DONE = False
 
 SWAG_REPO_URL = 'https://github.com/Netflix-Skunkworks/swag-client'
 
-PHANTOMJS_EXECUTABLE = 'phantomjs'
 LOCALDB = 'sqlite'
 
 # Configuration default values.
@@ -90,11 +89,9 @@ def persist_aa_data(app, aa_data):
     """
     from aardvark.model import AWSIAMObject, AdvisorData
 
-    aa = json.loads(aa_data)
-
     with app.app_context():
         arn_cache = {}
-        for arn, data in aa.items():
+        for arn, data in aa_data.items():
             if arn in arn_cache:
                 item = arn_cache[arn]
             else:
@@ -102,11 +99,11 @@ def persist_aa_data(app, aa_data):
                 arn_cache[arn] = item
             for service in data:
                 AdvisorData.create_or_update(item.id,
-                                             service['lastAuthenticated'],
-                                             service['serviceName'],
-                                             service['serviceNamespace'],
-                                             service['lastAuthenticatedEntity'],
-                                             service['totalAuthenticatedEntities'])
+                                             service['LastAuthenticated'],
+                                             service['ServiceName'],
+                                             service['ServiceNamespace'],
+                                             service.get('LastAuthenticatedEntity'),
+                                             service['TotalAuthenticatedEntities'])
         db.session.commit()
 
 
@@ -129,9 +126,8 @@ def create_db():
 @manager.option('-b', '--swag-bucket', dest='bucket_param', type=unicode)
 @manager.option('-d', '--db-uri', dest='db_uri_param', type=unicode)
 @manager.option('--num-threads', dest='num_threads_param', type=int)
-@manager.option('--phantom', dest='phantom_param', type=unicode)
 @manager.option('--no-prompt', dest='no_prompt', action='store_true', default=False)
-def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, phantom_param, no_prompt):
+def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, no_prompt):
     """
     Creates a config.py configuration file from user input or default values.
 
@@ -145,11 +141,6 @@ def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, p
     the configuration file will be populated with option-specified values
     or defaults.
 
-    If the phantomjs executable path is not specified but is located by
-    find_executable(), no prompt to input the path will be offered
-    regardless of whether the no-prompt flag is set. If no phantomjs
-    executable is found or specified an Exception is raised.
-
     The resulting configuration file defines the following parameters.
     Configurable parameters are shown in <angle braces>.
 
@@ -158,7 +149,6 @@ def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, p
     SWAG_SERVICE_ENABLED_REQUIREMENT = None
     ROLENAME = <aardvark_role>
     REGION = "us-east-1"
-    PHANTOMJS = <phantomjs>
     SQLALCHEMY_DATABASE_URI = <db_uri>
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     NUM_THREADS = <num_threads>
@@ -168,13 +158,11 @@ def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, p
     default_db_uri = '{localdb}:///{path}/{filename}'.format(
         localdb=LOCALDB, path=os.getcwd(), filename=DEFAULT_LOCALDB_FILENAME
         )
-    default_phantomjs = find_executable(PHANTOMJS_EXECUTABLE)
 
     if no_prompt:  # Just take the parameters as currently constituted.
         aardvark_role = aardvark_role_param or DEFAULT_AARDVARK_ROLE
         num_threads = num_threads_param or DEFAULT_NUM_THREADS
         db_uri = db_uri_param or default_db_uri
-        phantom = phantom_param or default_phantomjs
 
         # If a swag bucket was specified we set write_swag here so it gets
         # written out to the config file below.
@@ -204,14 +192,6 @@ def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, p
         aardvark_role = aardvark_role_param or raw_input(aardvark_role_prompt) or DEFAULT_AARDVARK_ROLE
         db_uri = db_uri_param or raw_input(db_uri_prompt) or default_db_uri
         num_threads = num_threads_param or raw_input(num_threads_prompt) or DEFAULT_NUM_THREADS
-
-        phantom_prompt = 'Path to {phantomjs}: '.format(phantomjs=PHANTOMJS_EXECUTABLE)
-        # Note order - we only prompt for phantomjs if we didn't find it.
-        phantom = phantom_param or default_phantomjs or raw_input(phantom_prompt)
-
-    # If this wasn't identified by find_executable() or input, bail out.
-    if not phantom:
-        raise RuntimeError('no phantomjs executable found or specified')
 
     log = """LOG_CFG = {
     'version': 1,
@@ -256,7 +236,6 @@ def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, p
             filedata.write("SWAG_SERVICE_ENABLED_REQUIREMENT = None\n")
         filedata.write('ROLENAME = "{role}"\n'.format(role=aardvark_role))
         filedata.write('REGION = "us-east-1"\n')
-        filedata.write('PHANTOMJS = "{phantom}"\n'.format(phantom=phantom))
         filedata.write('SQLALCHEMY_DATABASE_URI = "{uri}"\n'.format(uri=db_uri))
         filedata.write('SQLALCHEMY_TRACK_MODIFICATIONS = False\n')
         filedata.write('NUM_THREADS = {num_threads}\n'.format(num_threads=num_threads))

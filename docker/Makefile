@@ -239,16 +239,6 @@ define newline
 
 endef
 
-
-# - - - - - - - - - - - - - - - -
-# Update these to rev the phantomjs version.
-# - - - - - - - - - - - - - - - -
-PHANTOMJS_VERSION = phantomjs-2.1.1-linux-x86_64
-PHANTOMJS_SHA = 86dd9a4bf4aee45f1a84c9f61cf1947c1d6dce9b9e8d2a907105da7852460d2f
-# PHANTOMJS_2_1_1_SHA = 86dd9a4bf4aee45f1a84c9f61cf1947c1d6dce9b9e8d2a907105da7852460d2f
-
-PHANTOMJS_ARCHIVE = $(PHANTOMJS_VERSION).tar.bz2
-
 # - - - - - - - - - - - - - - - -
 # Many build steps are docker build or docker run, which create no
 # actual target and would always rebuild. These files are created by
@@ -271,10 +261,7 @@ ALL_CLEANUP = \
 	$(AARDVARK_DATA_DOCKER_RUN_PSEUDO) \
 	$(AARDVARK_APISERVER_DOCKER_BUILD_PSEUDO) \
 	$(AARDVARK_COLLECTOR_DOCKER_BUILD_PSEUDO) \
-	$(PHANTOMJS_ARCHIVE) \
-	$(PHANTOMJS_ARCHIVE).shasum \
-	aardvark \
-	phantomjs*
+	aardvark
 
 # - - - - - - - - - - - - - - - -
 # These are removed by "make clean-docker".
@@ -288,7 +275,7 @@ ALL_DOCKER_CLEANUP = \
 # - - - - - - - - - - - - - - - -
 # These are target lists in multiple places.
 # - - - - - - - - - - - - - - - -
-PREREQUISITES = aardvark phantomjs
+PREREQUISITES = aardvark
 AARDVARK_SERVICE = aardvark-collector aardvark-apiserver
 
 # - - - - - - - - - - - - - - - -
@@ -323,7 +310,7 @@ aardvark-apiserver: $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO) $(AARDVARK_APISERVER_DO
 aardvark-collector: $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO) $(AARDVARK_COLLECTOR_DOCKER_BUILD_PSEUDO)		## Build the aardvark collector docker image.
 aardvark-data-volume: $(AARDVARK_DATA_DOCKER_RUN_PSEUDO)		## Create and initialize the sqlite database shared volume.
 aardvark-base: $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO)	## Create the base docker image for subsequent aardvark images.
-prerequisites: $(PREREQUISITES)		## Fetch the phantomjs package and aardvark repository if not present.
+prerequisites: $(PREREQUISITES)		## Fetch the aardvark repository if not present.
 
 # - - - - - - - - - - - - - - - -
 .PHONY: clean clean-docker clean-all help
@@ -421,19 +408,6 @@ $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO): $(PREREQUISITES)
 	if [ -n "$$AARDVARK_BASE_IMAGE_LS" ] ; then \
 		echo "$$AARDVARK_BASE_IMAGE_LS" > $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO); \
 		fi
-
-# - - - - - - - - - - - - - - - -
-phantomjs: $(PHANTOMJS_VERSION)		## Fetch the phantomjs package.
-	ln -s $(PHANTOMJS_VERSION) phantomjs
-
-$(PHANTOMJS_VERSION): $(PHANTOMJS_ARCHIVE)
-	rm -f $(PHANTOMJS_ARCHIVE).shasum
-	echo "$(PHANTOMJS_SHA)  $(PHANTOMJS_ARCHIVE)" > $(PHANTOMJS_ARCHIVE).shasum
-	@shasum -c $(PHANTOMJS_ARCHIVE).shasum
-	tar -xf $(PHANTOMJS_ARCHIVE) $(PHANTOMJS_VERSION)
-
-$(PHANTOMJS_ARCHIVE):
-	curl -Ls https://bitbucket.org/ariya/phantomjs/downloads/$(PHANTOMJS_ARCHIVE) > $(PHANTOMJS_ARCHIVE)
 
 # - - - - - - - - - - - - - - - -
 aardvark:		## Clone the aardvark repository.
