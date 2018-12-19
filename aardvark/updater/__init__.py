@@ -24,7 +24,6 @@ class AccountToUpdate(object):
         2) Gets IAM credentials in target account.
         3) Calls GenerateServiceLastAccessedDetails for each role
         4) Calls GetServiceLastAccessedDetails for each role to retrieve data
-
         :return: Return code and JSON Access Advisor data for given account
         """
         arns = self._get_arns()
@@ -83,7 +82,6 @@ class AccountToUpdate(object):
     def _get_client(self):
         """
         Assumes into the target account and obtains IAM client
-
         :return: boto3 IAM client in target account & role
         """
         client = boto3_cached_conn(
@@ -106,10 +104,10 @@ class AccountToUpdate(object):
     def _get_service_last_accessed_details(self, iam, jobs):
         access_details = {}
         job_queue = list(jobs.keys())
-        start_time = time.time()
+        last_job_completion_time = time.time()
         while job_queue:
             now = time.time()
-            if now - start_time > self.max_access_advisor_job_wait:
+            if now - last_job_completion_time > self.max_access_advisor_job_wait:
                 # We ran out of time, some jobs are unfinished
                 self._log_unfinished_jobs(job_queue, jobs)
                 break
@@ -129,6 +127,7 @@ class AccountToUpdate(object):
                         arn=role_arn,
                 ))
                 continue
+            last_job_completion_time = time.time()
             access_details[role_arn] = details['ServicesLastAccessed']
             for detail in access_details[role_arn]:
                 last_auth = detail.get('LastAuthenticated')
@@ -146,3 +145,4 @@ class AccountToUpdate(object):
                 job_id=job_id,
                 arn=role_arn,
             ))
+
