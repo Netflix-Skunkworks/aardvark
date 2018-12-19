@@ -106,10 +106,10 @@ class AccountToUpdate(object):
     def _get_service_last_accessed_details(self, iam, jobs):
         access_details = {}
         job_queue = list(jobs.keys())
-        start_time = time.time()
+        last_job_completion_time = time.time()
         while job_queue:
             now = time.time()
-            if now - start_time > self.max_access_advisor_job_wait:
+            if now - last_job_completion_time > self.max_access_advisor_job_wait:
                 # We ran out of time, some jobs are unfinished
                 self._log_unfinished_jobs(job_queue, jobs)
                 break
@@ -129,6 +129,7 @@ class AccountToUpdate(object):
                         arn=role_arn,
                 ))
                 continue
+            last_job_completion_time = time.time()
             access_details[role_arn] = details['ServicesLastAccessed']
             for detail in access_details[role_arn]:
                 last_auth = detail.get('LastAuthenticated')
