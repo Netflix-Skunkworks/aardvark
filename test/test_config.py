@@ -3,8 +3,6 @@
 We test the following for the configurable parameters:
 - Exactly the expected parameters appear in the config file.
 - The expected parameters have the expected values in the config file.
-- If no phantomjs executable is found or specified, no config file is
-  created.
 
 
 In the event of test failures it may be helpful to examine the command
@@ -35,15 +33,6 @@ SWAG_CONFIG_TEST_ARCHIVE_DIR. This will create a record of all the
 command lines executed in execution of these test cases, in files
 names "commands.[TestClassName]".
 
-
-Some of the test cases provided check for proper behavior when the
-phantomjs executable can be located by
-distutils.spawn.find_executable() and some check proper behavior when
-the executable can't be located. Tests with such a dependency will be
-skipped if the dependency isn't satisfied. Manually rename or move
-the phantomjs executable to enable tests that require it not be
-found.
-
 '''
 
 import inspect
@@ -52,7 +41,6 @@ import shutil
 import tempfile
 
 import unittest
-from distutils.spawn import find_executable
 
 from aardvark import manage
 import pexpect
@@ -61,7 +49,6 @@ import pexpect
 EXPECT_TIMEOUT = 8
 
 CONFIG_FILENAME = 'config.py'
-PHANTOMJS_EXECUTABLE = find_executable(manage.PHANTOMJS_EXECUTABLE)
 
 ALWAYS_ARCHIVE = os.environ.get('SWAG_CONFIG_TEST_ALWAYS_ARCHIVE')
 
@@ -100,14 +87,6 @@ CONFIG_OPTIONS = {
         'getval': lambda x: x,
         'default': manage.DEFAULT_AARDVARK_ROLE
         },
-    'phantom': {
-        'short': None,
-        'long': '--phantom',
-        'config_key': 'PHANTOMJS',
-        'config_prompt': r'(?i).*phantomjs.*:',
-        'getval': lambda x: x,
-        'default': PHANTOMJS_EXECUTABLE
-        },
     'db_uri': {
         'short': '-d',
         'long': '--db-uri',
@@ -133,16 +112,6 @@ DEFAULT_PARAMETERS = dict([
     (k, v['default']) for k, v in CONFIG_OPTIONS.items()
     ])
 DEFAULT_PARAMETERS_NO_SWAG = dict(DEFAULT_PARAMETERS, **{'swag_bucket': None})
-
-# Message strings for skipIf.
-INSTALL_PHANTOM = (
-    "The phantomjs executable must be locatable by find_executable()",
-    " to run tests that depend on finding it."
-    )
-HIDE_PHANTOM = (
-    "Manually remove or temporarily rename the phantomjs executable",
-    " to run no-phantom cases."
-    )
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Uncomment to show lower level logging statements.
@@ -485,7 +454,6 @@ class TestConfigNoPrompt(TestConfigBase):
     '''Test cases for config --no-prompt.'''
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    @unittest.skipIf(not PHANTOMJS_EXECUTABLE, INSTALL_PHANTOM)
     def test_no_prompt_defaults(self):
         '''Test with no-prompt and all default arguments.'''
 
@@ -498,7 +466,6 @@ class TestConfigNoPrompt(TestConfigBase):
         cmdline_option_spec = {
             'swag_bucket': 'bucket_123',
             'aardvark_role': 'role_123',
-            'phantom': 'phantom_123',
             'db_uri': 'db_uri_123',
             'num_threads': 4
             }
@@ -514,7 +481,6 @@ class TestConfigNoPrompt(TestConfigBase):
         cmdline_option_spec = {
             'swag_bucket': 'bucket_123',
             'aardvark_role': 'role_123',
-            'phantom': 'phantom_123',
             'db_uri': 'db_uri_123',
             'num_threads': 4
             }
@@ -530,37 +496,8 @@ class TestConfigNoPrompt(TestConfigBase):
 
         cmdline_option_spec = {
             'aardvark_role': 'role_123',
-            'phantom': 'phantom_123',
             'db_uri': 'db_uri_123',
             'num_threads': 4
-            }
-
-        self.case_worker(
-            cmdline_option_spec=cmdline_option_spec,
-            )
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    @unittest.skipIf(PHANTOMJS_EXECUTABLE, HIDE_PHANTOM)
-    def test_no_prompt_no_phantom_raises_error(self):
-        '''Test with no-prompt and phantom neither found nor specified.
-
-        This requires intervention to "hide" the phantom executable.
-        '''
-
-        self.case_worker(
-            expect_config_file=False
-            )
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    @unittest.skipIf(PHANTOMJS_EXECUTABLE, HIDE_PHANTOM)
-    def test_no_prompt_specify_phantom_no_executable(self):
-        '''Test with no-prompt and phantom not found.
-
-        This requires intervention to "hide" the phantom executable.
-        '''
-
-        cmdline_option_spec = {
-            'phantom': 'phantom_123',
             }
 
         self.case_worker(
@@ -573,7 +510,6 @@ class TestConfigPrompt(TestConfigBase):
     '''Test cases for config with prompting.'''
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    @unittest.skipIf(not PHANTOMJS_EXECUTABLE, INSTALL_PHANTOM)
     def test_prompted_defaults(self):
         '''Test with no parameters specified.'''
 
@@ -588,7 +524,6 @@ class TestConfigPrompt(TestConfigBase):
         cmdline_option_spec = {
             'swag_bucket': 'bucket_123',
             'aardvark_role': 'role_123',
-            'phantom': 'phantom_123',
             'db_uri': 'db_uri_123',
             'num_threads': 4
             }
@@ -599,7 +534,6 @@ class TestConfigPrompt(TestConfigBase):
             )
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    @unittest.skipIf(not PHANTOMJS_EXECUTABLE, INSTALL_PHANTOM)
     def test_prompted_no_swag(self):
         '''Test with all non-swag parameters interactively.'''
 
@@ -612,70 +546,6 @@ class TestConfigPrompt(TestConfigBase):
         self.case_worker(
             input_option_spec=input_option_spec,
             prompt=True
-            )
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    @unittest.skipIf(not PHANTOMJS_EXECUTABLE, INSTALL_PHANTOM)
-    def test_prompted_nophantom_option(self):
-        '''Test with all non-phantom parameters interactively.'''
-
-        input_option_spec = {
-            'swag_bucket': 'bucket_123',
-            'aardvark_role': 'role_123',
-            'db_uri': 'db_uri_123',
-            'num_threads': 4
-            }
-
-        self.case_worker(
-            input_option_spec=input_option_spec,
-            prompt=True
-            )
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    @unittest.skipIf(PHANTOMJS_EXECUTABLE, HIDE_PHANTOM)
-    def test_prompted_no_phantom_raises_error(self):
-        '''Test with phantom neither found nor specified.
-
-        This requires intervention to "hide" the phantom executable.
-        '''
-
-        self.case_worker(
-            prompt=True,
-            expect_config_file=False
-            )
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    @unittest.skipIf(PHANTOMJS_EXECUTABLE, HIDE_PHANTOM)
-    def test_prompted_input_phantom_no_executable(self):
-        '''Test with phantom not found but entered interactively.
-
-        This requires intervention to "hide" the phantom executable.
-        '''
-
-        input_option_spec = {
-            'phantom': 'phantom_123',
-            }
-
-        self.case_worker(
-            input_option_spec=input_option_spec,
-            prompt=True,
-            )
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    @unittest.skipIf(PHANTOMJS_EXECUTABLE, HIDE_PHANTOM)
-    def test_prompted_cmdline_phantom_no_executable(self):
-        '''Test with phantom not found but provided by parameter.
-
-        This requires intervention to "hide" the phantom executable.
-        '''
-
-        cmdline_option_spec = {
-            'phantom': 'phantom_123',
-            }
-
-        self.case_worker(
-            cmdline_option_spec=cmdline_option_spec,
-            prompt=True,
             )
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

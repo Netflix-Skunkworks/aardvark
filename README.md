@@ -7,8 +7,6 @@ Aardvark
 
 Aardvark is a multi-account AWS IAM Access Advisor API (and caching layer).
 
-Aardvark uses PhantomJS to log into the AWS Console and obtain access advisor data.  It then presents a RESTful API for other apps to query.
-
 ## Install:
 
 ```bash
@@ -19,13 +17,7 @@ python setup.py develop
 ```
 
 ### Known Dependencies
- - [PhantomJS*](http://phantomjs.org/download.html)
  - libpq-dev
-
-**Note**: Aardvark requires at least phantomjs 2.1.1.  We've seen odd behavior running with older versions. In order to use phanton_js you will need to set the env variable as described below, otherwise it will try to open in interactive mode and probably it will not properly work:
- ```bash
- export QT_QPA_PLATFORM=offscreen
- ```
 
 ## Configure Aardvark
 
@@ -38,14 +30,12 @@ Do you use SWAG to track accounts? [yN]: no
 ROLENAME: Aardvark
 DATABASE [sqlite:////home/github/aardvark/aardvark.db]:
 # Threads [5]:
-Path to phantomjs:
 
 >> Writing to config.py
 ```
 - Whether to use [SWAG](https://github.com/Netflix-Skunkworks/swag-client) to enumerate your AWS accounts. (Optional, but useful when you have many accounts.)
 - The name of the IAM Role to assume into in each account.
 - The Database connection string. (Defaults to sqlite in the current working directory. Use RDS Postgres for production.)
-- Location of the PhantomJS executable. (Will attempt to find `phantomjs` in your path before asking.)  Ensure it is at least `v2.1.1`.
 
 ## Create the DB tables
 
@@ -122,9 +112,8 @@ curl localhost:5000/api/1/advisors?regex=^.*Monkey$
 
 ### Threads
 Aardvark will launch the number of threads specified in the configuration.  Each of these threads
-will launch a PhantomJS process to retrieve Access Advisor data for an account and then persist the
-data.  We have discovered in testing that more than `6` threads causes the Phantom processes to fail
-to complete.
+will retrieve Access Advisor data for an account and then persist the
+data.
 
 ### Database
 The `regex` query is only supported in Postgres (natively) and SQLite (via some magic courtesy of Xion

@@ -3,8 +3,6 @@ FROM python:2
 
 LABEL author="scottbrown0001@gmail.com"
 
-COPY phantomjs/bin/phantomjs /usr/local/bin
-
 COPY aardvark /tmp/aardvark
 WORKDIR /tmp/aardvark
 

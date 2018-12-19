@@ -1,15 +1,6 @@
-import json
-import os
-import tempfile
-import urllib
-
+import time
 from cloudaux.aws.iam import list_roles, list_users
 from cloudaux.aws.sts import boto3_cached_conn
-import requests
-import subprocess32
-from subprocess32 import CalledProcessError
-
-federation_base_url = 'https://signin.aws.amazon.com/federation'
 
 
 class AccountToUpdate(object):
@@ -24,15 +15,15 @@ class AccountToUpdate(object):
             'session_name': 'aardvark',
             'region': self.current_app.config.get('REGION') or 'us-east-1'
         }
+        self.max_access_advisor_job_wait = 5 * 60  # Wait 5 minutes before giving up on jobs
 
     def update_account(self):
         """
         Updates Access Advisor data for a given AWS account.
         1) Gets list of IAM Role ARNs in target account.
         2) Gets IAM credentials in target account.
-        3) Exchanges IAM credentials for Signin Token.
-        4) Calls PhantomJS to do the dirty work.
-        5) Saves PhantomJS output to our DB.
+        3) Calls GenerateServiceLastAccessedDetails for each role
+        4) Calls GetServiceLastAccessedDetails for each role to retrieve data
 
         :return: Return code and JSON Access Advisor data for given account
         """
@@ -42,14 +33,14 @@ class AccountToUpdate(object):
             self.current_app.logger.warn("Zero ARNs collected. Exiting")
             exit(-1)
 
-        creds = self._get_creds()
-        token = _get_signin_token(creds)
-        with tempfile.NamedTemporaryFile() as f:
-            ret_code = self._call_phantom(token, list(arns), f.name)
-            if ret_code == 0:
-                return ret_code, f.read()
-            else:
-                return ret_code, None
+        client = self._get_client()
+        try:
+            details = self._call_access_advisor(client, list(arns))
+        except Exception:
+            self.current_app.logger.exception('Failed to call access advisor')
+            return 255, None
+        else:
+            return 0, details
 
     def _get_arns(self):
         """
@@ -89,75 +80,69 @@ class AccountToUpdate(object):
 
         return list(result_arns)
 
-    def _get_creds(self):
+    def _get_client(self):
         """
-        Assumes into the target account and obtains Access Key, Secret Key, and Token
+        Assumes into the target account and obtains IAM client
 
-        :return: URL-encoded dictionary containing Access Key, Secret Key, and Token
+        :return: boto3 IAM client in target account & role
         """
-        client, credentials = boto3_cached_conn(
-            'iam', account_number=self.account_number, assume_role=self.role_name, return_credentials=True)
+        client = boto3_cached_conn(
+            'iam', account_number=self.account_number, assume_role=self.role_name)
+        return client
 
-        creds = json.dumps(dict(
-            sessionId=credentials['AccessKeyId'],
-            sessionKey=credentials['SecretAccessKey'],
-            sessionToken=credentials['SessionToken']
-        ))
-        creds = urllib.quote(creds, safe='')
-        return creds
+    def _call_access_advisor(self, iam, arns):
+        jobs = self._generate_service_last_accessed_details(iam, arns)
+        details = self._get_service_last_accessed_details(iam, jobs)
+        return details
 
-    def _call_phantom(self, token, arns, output_file):
-        """
-        shells out to phantomjs.
-        - Writes ARNs to a file that phantomjs will read as an input.
-        - Phantomjs exchanges the token for session cookies.
-        - Phantomjs then navigates to the IAM page and executes JavaScript
-        to call GenerateServiceLastAccessedDetails for each ARN.
-        - Every 10 seconds, Phantomjs calls GetServiceLastAccessedDetails
-        - Phantom saves output to a file that is used by `persist()`
+    @staticmethod
+    def _generate_service_last_accessed_details(iam, arns):
+        jobs = {}
+        for role_arn in arns:
+            job_id = iam.generate_service_last_accessed_details(Arn=role_arn)['JobId']
+            jobs[job_id] = role_arn
+        return jobs
 
-        :return: Exit code from phantomjs subprocess32
-        """
+    def _get_service_last_accessed_details(self, iam, jobs):
+        access_details = {}
+        job_queue = list(jobs.keys())
+        start_time = time.time()
+        while job_queue:
+            now = time.time()
+            if now - start_time > self.max_access_advisor_job_wait:
+                # We ran out of time, some jobs are unfinished
+                self._log_unfinished_jobs(job_queue, jobs)
+                break
+            job_id = job_queue.pop()
+            role_arn = jobs[job_id]
+            details = iam.get_service_last_accessed_details(JobId=job_id)
+            if details['JobStatus'] == 'IN_PROGRESS':
+                job_queue.append(job_id)
+                if not job_queue:  # We're hanging on the last job, let's hang back for a bit
+                    time.sleep(1)
+                continue
+            if details['JobStatus'] != 'COMPLETED':
+                self.current_app.logger.error(
+                    "Job {job_id} finished with unexpected status {status} for ARN {arn}.".format(
+                        job_id=job_id,
+                        status=details['JobStatus'],
+                        arn=role_arn,
+                ))
+                continue
+            access_details[role_arn] = details['ServicesLastAccessed']
+            for detail in access_details[role_arn]:
+                last_auth = detail.get('LastAuthenticated')
+                if last_auth:
+                    last_auth = time.mktime(last_auth.timetuple())
+                else:
+                    last_auth = 0
+                detail['LastAuthenticated'] = last_auth
+        return access_details
 
-        path = os.path.dirname(__file__)
-        console_js = os.path.join(path, 'awsconsole.js')
-
-        with tempfile.NamedTemporaryFile() as f:
-            json.dump(arns, f)
-            f.seek(0)
-            try:
-                p = subprocess32.Popen([
-                    self.current_app.config.get('PHANTOMJS'),
-                    console_js,
-                    token,
-                    f.name,
-                    output_file],
-                    stdout=subprocess32.PIPE, stderr=subprocess32.STDOUT)
-                output, errs = p.communicate(timeout=1200)  # 20 mins
-                self.current_app.logger.debug('Phantom Output: \n{}'.format(output))
-                self.current_app.logger.debug('Phantom Errors: \n{}'.format(errs))
-            except subprocess32.TimeoutExpired:
-                self.current_app.logger.error('PhantomJS timed out')
-                return 1  # return code 1 for timeout
-            except CalledProcessError:
-                self.current_app.logger.error('PhantomJS exited: {}'
-                                              ''.format(p.returncode))
-                return p.returncode
-            else:
-                self.current_app.logger.info('PhantomJS exited: 0')
-                return 0
-
-
-def _get_signin_token(creds):
-    """
-    Exchanges credentials dictionary for a signin token.
-
-    1) Creates URL using credentials dictionary.
-    2) Sends a GET request to that URL and parses the response looking for
-    a signin token.
-
-    :return: Signin Token
-    """
-    url = '{base}?Action=getSigninToken&Session={creds}'
-    url = url.format(base=federation_base_url, creds=creds)
-    return requests.get(url).json()['SigninToken']
+    def _log_unfinished_jobs(self, job_queue, job_details):
+        for job_id in job_queue:
+            role_arn = job_details[job_id]
+            self.current_app.logger.error("Job {job_id} for ARN {arn} didn't finish".format(
+                job_id=job_id,
+                arn=role_arn,
+            ))

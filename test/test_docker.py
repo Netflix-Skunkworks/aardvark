@@ -62,10 +62,8 @@ ARTIFACT_DIRECTORY = 'artifacts'
 # A few constants that are checked when testing container
 # config settings.
 CONTAINER_CONFIG_PATH = '/etc/aardvark/config.py'
-CONTAINER_PHANTOMJS_PERMS = 'rwxr-xr-x'
 
 EXPECTED_SQLITE_DB_URI = 'sqlite:////usr/share/aardvark-data/aardvark.db'
-EXPECTED_PHANTOMJS_PATH = '/usr/local/bin/phantomjs'
 EXPECTED_SQL_TRACK_MODS = False
 
 # Making targets can take some time, and depends on network connection
@@ -78,7 +76,6 @@ PEXPECT_TIMEOUTS = {
     'aardvark-all': 240,
     'aardvark-base': 180,
     'aardvark-sqlite': 300,
-    'phantomjs': 30,
     }
 NETWORK_SPEED_FACTOR = 1.0
 
@@ -519,8 +516,6 @@ class TestDockerBase(unittest.TestCase):
         # from container command lines.
         shell_commands = (
             ('pwd', 'pwd', None),
-            ('phantomjs_path', 'which phantomjs', None),
-            ('phantomjs_perms', 'ls -l $(which phantomjs)', lambda x: x[1:10]),
             ('config_file', 'ls {}'.format(CONTAINER_CONFIG_PATH), None),
             ('config_contents', 'cat {}'.format(CONTAINER_CONFIG_PATH), None),
             )
@@ -636,7 +631,6 @@ class TestDockerBase(unittest.TestCase):
             expected_artifacts=None,
             expected_docker_images=None,
             expected_details=None,
-            expect_phantom=True,
             expect_aardvark=True,
             add_env=None,
             set_images_tag=True,
@@ -671,9 +665,6 @@ class TestDockerBase(unittest.TestCase):
         expected_details = expected_details or {}
         expected_details['_common'] = expected_details.get('_common') or {}
         expected_details['_common']['config_file'] = CONTAINER_CONFIG_PATH
-        expected_details['_common']['phantomjs_perms'] = (
-            CONTAINER_PHANTOMJS_PERMS
-            )
 
         # Environment variables to add to the pexpect interaction with
         # containers.
@@ -741,16 +732,6 @@ class TestDockerBase(unittest.TestCase):
         for image in tagged_expected_docker_images:
             self.check_container_details(image, expected_details)
 
-        if expect_phantom:
-            self.require_filenames_in_directory(
-                [
-                    r'phantomjs$',
-                    r'phantomjs-.*-linux-x86_64$',
-                    r'phantomjs-.*-linux-x86_64.tar.bz2$',
-                    r'phantomjs-.*-linux-x86_64.tar.bz2.shasum$'
-                    ]
-                )
-
         if expect_aardvark:
             self.require_filenames_in_directory([r'aardvark$'])
 
@@ -769,23 +750,12 @@ class TestDockerContainerConstruction(TestDockerBase):
     '''Test cases for docker container construction.'''
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    def test_make_phantomjs(self):
-        '''Test "make phantomjs".'''
-
-        self.case_worker(
-            target='phantomjs',
-            expect_aardvark=False,
-            expect_phantom=True,
-            )
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     def test_make_aardvark(self):
-        '''Test "make phantomjs".'''
+        '''Test "make aardvark".'''
 
         self.case_worker(
             target='aardvark',
             expect_aardvark=True,
-            expect_phantom=False,
             )
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -801,7 +771,6 @@ class TestDockerContainerConstruction(TestDockerBase):
                 '_common': {
                     'pwd': '/etc/aardvark',
                     'NUM_THREADS': 5,
-                    'PHANTOMJS': EXPECTED_PHANTOMJS_PATH,
                     'ROLENAME': 'Aardvark',
                     'SQLALCHEMY_DATABASE_URI': EXPECTED_SQLITE_DB_URI,
                     'SQLALCHEMY_TRACK_MODIFICATIONS': EXPECTED_SQL_TRACK_MODS,
@@ -829,7 +798,6 @@ class TestDockerContainerConstruction(TestDockerBase):
                 '_common': {
                     'pwd': '/etc/aardvark',
                     'NUM_THREADS': 5,
-                    'PHANTOMJS': EXPECTED_PHANTOMJS_PATH,
                     'ROLENAME': aardvark_role,
                     'SQLALCHEMY_DATABASE_URI': aardvark_db_uri,
                     'SQLALCHEMY_TRACK_MODIFICATIONS': EXPECTED_SQL_TRACK_MODS,
@@ -861,7 +829,6 @@ class TestDockerContainerConstruction(TestDockerBase):
                 '_common': {
                     'pwd': '/usr/share/aardvark-data',
                     'NUM_THREADS': 5,
-                    'PHANTOMJS': EXPECTED_PHANTOMJS_PATH,
                     'ROLENAME': 'Aardvark',
                     'SQLALCHEMY_DATABASE_URI': EXPECTED_SQLITE_DB_URI,
                     'SQLALCHEMY_TRACK_MODIFICATIONS': EXPECTED_SQL_TRACK_MODS,
@@ -896,7 +863,6 @@ class TestDockerContainerConstruction(TestDockerBase):
                 '_common': {
                     'pwd': '/usr/share/aardvark-data',
                     'NUM_THREADS': 5,
-                    'PHANTOMJS': EXPECTED_PHANTOMJS_PATH,
                     'ROLENAME': 'Aardvark',
                     'SQLALCHEMY_DATABASE_URI': EXPECTED_SQLITE_DB_URI,
                     'SQLALCHEMY_TRACK_MODIFICATIONS': EXPECTED_SQL_TRACK_MODS,
@@ -929,7 +895,6 @@ class TestDockerContainerConstruction(TestDockerBase):
                 '_common': {
                     'pwd': '/usr/share/aardvark-data',
                     'NUM_THREADS': 5,
-                    'PHANTOMJS': EXPECTED_PHANTOMJS_PATH,
                     'ROLENAME': 'Aardvark',
                     'SQLALCHEMY_DATABASE_URI': EXPECTED_SQLITE_DB_URI,
                     'SQLALCHEMY_TRACK_MODIFICATIONS': EXPECTED_SQL_TRACK_MODS,
@@ -967,7 +932,6 @@ class TestDockerContainerConstruction(TestDockerBase):
                 '_common': {
                     'pwd': '/usr/share/aardvark-data',
                     'NUM_THREADS': 5,
-                    'PHANTOMJS': EXPECTED_PHANTOMJS_PATH,
                     'ROLENAME': 'Aardvark',
                     'SQLALCHEMY_DATABASE_URI': EXPECTED_SQLITE_DB_URI,
                     'SQLALCHEMY_TRACK_MODIFICATIONS': EXPECTED_SQL_TRACK_MODS,
