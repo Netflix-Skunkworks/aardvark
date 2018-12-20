@@ -1,6 +1,7 @@
 import time
 from cloudaux.aws.iam import list_roles, list_users
 from cloudaux.aws.sts import boto3_cached_conn
+from cloudaux.aws.decorators import rate_limited
 
 
 class AccountToUpdate(object):
@@ -91,44 +92,63 @@ class AccountToUpdate(object):
         return client
 
     def _call_access_advisor(self, iam, arns):
-        jobs = self._generate_service_last_accessed_details(iam, arns)
-        details = self._get_service_last_accessed_details(iam, jobs)
+        jobs = self._generate_job_ids(iam, arns)
+        details = self._get_job_results(iam, jobs)
         return details
 
-    @staticmethod
-    def _generate_service_last_accessed_details(iam, arns):
+    @rate_limited()
+    def _generate_service_last_accessed_details(self, iam, arn):
+        """ Wrapping the actual AWS API calls for rate limiting protection. """
+        return iam.generate_service_last_accessed_details(Arn=arn)['JobId']
+
+    @rate_limited()
+    def _get_service_last_accessed_details(self, iam, job_id):
+        """ Wrapping the actual AWS API calls for rate limiting protection. """
+        return iam.get_service_last_accessed_details(JobId=job_id)
+
+    def _generate_job_ids(self, iam, arns):
         jobs = {}
         for role_arn in arns:
-            job_id = iam.generate_service_last_accessed_details(Arn=role_arn)['JobId']
+            job_id = self._generate_service_last_accessed_details(iam, role_arn)
             jobs[job_id] = role_arn
         return jobs
 
-    def _get_service_last_accessed_details(self, iam, jobs):
+    def _get_job_results(self, iam, jobs):
         access_details = {}
         job_queue = list(jobs.keys())
         last_job_completion_time = time.time()
+
         while job_queue:
+
+            # Check for timeout
             now = time.time()
             if now - last_job_completion_time > self.max_access_advisor_job_wait:
                 # We ran out of time, some jobs are unfinished
                 self._log_unfinished_jobs(job_queue, jobs)
                 break
+
+            # Pull next job ID
             job_id = job_queue.pop()
             role_arn = jobs[job_id]
-            details = iam.get_service_last_accessed_details(JobId=job_id)
+            details = self._get_service_last_accessed_details(iam, job_id)
+
+            # Check job status
             if details['JobStatus'] == 'IN_PROGRESS':
                 job_queue.append(job_id)
                 if not job_queue:  # We're hanging on the last job, let's hang back for a bit
                     time.sleep(1)
                 continue
+
+            # Check for job failure
             if details['JobStatus'] != 'COMPLETED':
                 self.current_app.logger.error(
                     "Job {job_id} finished with unexpected status {status} for ARN {arn}.".format(
                         job_id=job_id,
                         status=details['JobStatus'],
-                        arn=role_arn,
-                ))
+                        arn=role_arn))
                 continue
+
+            # Job status must be COMPLETED. Save result.
             last_job_completion_time = time.time()
             access_details[role_arn] = details['ServicesLastAccessed']
             for detail in access_details[role_arn]:
@@ -138,6 +158,7 @@ class AccountToUpdate(object):
                 else:
                     last_auth = 0
                 detail['LastAuthenticated'] = last_auth
+
         return access_details
 
     def _log_unfinished_jobs(self, job_queue, job_details):

@@ -90,6 +90,10 @@ def persist_aa_data(app, aa_data):
     from aardvark.model import AWSIAMObject, AdvisorData
 
     with app.app_context():
+        if not aa_data:
+            app.logger.warn('Cannot persist Access Advisor Data as no data was collected.')
+            return
+
         arn_cache = {}
         for arn, data in aa_data.items():
             if arn in arn_cache:
