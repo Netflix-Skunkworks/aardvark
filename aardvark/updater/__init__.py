@@ -141,11 +141,17 @@ class AccountToUpdate(object):
 
             # Check for job failure
             if details['JobStatus'] != 'COMPLETED':
-                self.current_app.logger.error(
-                    "Job {job_id} finished with unexpected status {status} for ARN {arn}.".format(
-                        job_id=job_id,
-                        status=details['JobStatus'],
-                        arn=role_arn))
+                log_str = "Job {job_id} finished with unexpected status {status} for ARN {arn}.".format(
+                    job_id=job_id,
+                    status=details['JobStatus'],
+                    arn=role_arn)
+
+                failing_arns = self.current_app.config.get('FAILING_ARNS', {})
+                if role_arn in failing_arns:
+                    self.current_app.logger.info(log_str)
+                else:
+                    self.current_app.logger.error(log_str)
+
                 continue
 
             # Job status must be COMPLETED. Save result.
