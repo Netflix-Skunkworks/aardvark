@@ -167,7 +167,7 @@ class AccountToUpdate(object):
                 # AWS gives a datetime, convert to epoch
                 last_auth = detail.get('LastAuthenticated')
                 if last_auth:
-                    last_auth = int(time.mktime(last_auth.timetuple()))
+                    last_auth = int(time.mktime(last_auth.timetuple()) * 1000)
                 else:
                     last_auth = 0
 
@@ -185,3 +185,4 @@ class AccountToUpdate(object):
                 job_id=job_id,
                 arn=role_arn,
             ))
+
