@@ -1,4 +1,6 @@
+import copy
 import time
+
 from cloudaux.aws.iam import list_roles, list_users
 from cloudaux.aws.sts import boto3_cached_conn
 from cloudaux.aws.decorators import rate_limited
@@ -156,14 +158,23 @@ class AccountToUpdate(object):
 
             # Job status must be COMPLETED. Save result.
             last_job_completion_time = time.time()
-            access_details[role_arn] = details['ServicesLastAccessed']
-            for detail in access_details[role_arn]:
+            updated_list = []
+
+            for detail in details.get('ServicesLastAccessed'):
+                # create a copy, we're going to modify the time to epoch
+                updated_item = copy.copy(detail)
+
+                # AWS gives a datetime, convert to epoch
                 last_auth = detail.get('LastAuthenticated')
                 if last_auth:
-                    last_auth = time.mktime(last_auth.timetuple())
+                    last_auth = int(time.mktime(last_auth.timetuple()))
                 else:
                     last_auth = 0
-                detail['LastAuthenticated'] = last_auth
+
+                updated_item['LastAuthenticated'] = last_auth
+                updated_list.append(updated_item)
+
+            access_details[role_arn] = updated_list
 
         return access_details
 
