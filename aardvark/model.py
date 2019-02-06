@@ -92,3 +92,9 @@ class AdvisorData(db.Model):
         if lastAuthenticated > item.lastAuthenticated:
             item.lastAuthenticated = lastAuthenticated
             db.session.add(item)
+        
+        elif lastAuthenticated < item.lastAuthenticated:
+            current_app.logger.error("Received an older time than previously seen for object {} service {}!".format(
+                item.item_id,
+                item.serviceName
+            ))

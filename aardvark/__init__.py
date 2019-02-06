@@ -1,4 +1,5 @@
 import os.path
+import logging
 from logging import DEBUG, Formatter, StreamHandler
 from logging.config import dictConfig
 import sys
@@ -69,6 +70,7 @@ def setup_logging(app):
             # initialize the Flask logger (removes all handlers)
             app.logger
             dictConfig(app.config.get('LOG_CFG'))
+            app.logger = logging.getLogger(__name__)
         else:
             handler = StreamHandler(stream=sys.stderr)
 

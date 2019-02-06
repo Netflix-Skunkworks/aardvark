@@ -96,6 +96,8 @@ class AccountToUpdate(object):
     def _call_access_advisor(self, iam, arns):
         jobs = self._generate_job_ids(iam, arns)
         details = self._get_job_results(iam, jobs)
+        if arns and not details:
+            self.current_app.error("Didn't get any results from Access Advisor")
         return details
 
     @rate_limited()
