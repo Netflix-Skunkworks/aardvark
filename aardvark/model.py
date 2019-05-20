@@ -92,9 +92,27 @@ class AdvisorData(db.Model):
         if lastAuthenticated > item.lastAuthenticated:
             item.lastAuthenticated = lastAuthenticated
             db.session.add(item)
-        
+
         elif lastAuthenticated < item.lastAuthenticated:
-            current_app.logger.error("Received an older time than previously seen for object {} service {}!".format(
-                item.item_id,
-                item.serviceName
-            ))
+            """
+            lastAuthenticated is obtained by calling get_service_last_accessed_details() method of the boto3 iam client.
+            When there is no AA data about a service, the lastAuthenticated key is missing from the returned dictionary.
+            This is perfectly valid, either because the service in question was not accessed in the past 365 days or
+            the entity granting  access to it was created recently enough that no AA data is available yet (it can take up to
+            4 hours for this to happen).
+            When this happens, the AccountToUpdate._get_job_results() method will set lastAuthenticated to 0.
+            Usually we don't want to persist such an entity, with one exception: there's already a recorded, non-zero lastAuthenticated
+            timestamp persisted for this item. That means the service was accessed at some point in time, but now more than 365 passed since
+            the last access, so AA no longer returns a timestamp for it.
+            """
+            if lastAuthenticated == 0:
+                current_app.logger.warn('Previously seen object not accessed in the past 365 days '
+                                        '(got null lastAuthenticated from AA). Setting to 0. '
+                                        'Object {} service {} previous timestamp {}'.format(item.item_id, item.serviceName, item.lastAuthenticated))
+                item.lastAuthenticated = 0
+                db.session.add(item)
+            else:
+                current_app.logger.error("Received an older time than previously seen for object {} service {} ({la} < {ila})!".format(item.item_id,
+                                                                                                                                       item.serviceName,
+                                                                                                                                       la=lastAuthenticated,
+                                                                                                                                       ila=item.lastAuthenticated))

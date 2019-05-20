@@ -116,7 +116,10 @@ class AccountToUpdate(object):
             try:
                 job_id = self._generate_service_last_accessed_details(iam, role_arn)
                 jobs[job_id] = role_arn
-            except Exception as e:
+            except iam.exceptions.NoSuchEntityException:
+                """ We're here because this ARN disappeared since the call to self._get_arns(). Log the missing ARN and move along.  """
+                self.current_app.logger.info('ARN {arn} found gone when fetching details'.format(arn=role_arn))
+            except Exception:
                 self.current_app.logger.error('Could not gather data from {0}.'.format(role_arn))
         return jobs
 
@@ -139,7 +142,7 @@ class AccountToUpdate(object):
             role_arn = jobs[job_id]
             try:
                 details = self._get_service_last_accessed_details(iam, job_id)
-            except Exception as e:
+            except Exception:
                 self.current_app.logger.error('Could not gather data from {0}.'.format(role_arn))
                 continue
 
@@ -194,4 +197,3 @@ class AccountToUpdate(object):
                 job_id=job_id,
                 arn=role_arn,
             ))
-
