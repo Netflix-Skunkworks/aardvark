@@ -47,6 +47,9 @@ pipeline {
 
         stage('Build image') {
             steps {
+                sh 'wget -o /dev/null -O /tmp/docker.tgz https://download.docker.com/linux/static/stable/x86_64/docker-17.09.1-ce.tgz'
+                sh 'tar zxvf /tmp/docker.tgz -C /tmp'
+                sh 'sudo cp /tmp/docker/* /usr/bin/'
                 script {
                     app = docker.build("aardvark-base:${BUILD_NUMBER}", "-f docker/Dockerfile.aardvark-base")
                 }
