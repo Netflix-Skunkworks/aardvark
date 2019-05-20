@@ -38,22 +38,19 @@ pipeline {
     }
 
     stages {
-
-    //    stage('Build image') {
-    //         * docker build on the command line */
-    //
-    //        app = docker.build("docker/hellonode")
-    //    }
-
         stage('Test image') {
-    //        app.inside {
-    //            sh 'echo "Tests passed"'
-    //        }
             steps {
                 sh 'env'
                 sh 'pwd; ls -la; ls -latR'
             }
         }
+
+
+        stage('Build image') {
+            app = docker.build("aardvark-base:${BUILD_NUMBER}", "-f docker/Dockerfile.aardvark-base")
+        }
+
+
 
     //     stage('Push image') {
     // //        /* Finally, we'll push the image with two tags:
