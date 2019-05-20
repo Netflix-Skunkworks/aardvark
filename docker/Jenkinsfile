@@ -51,7 +51,7 @@ pipeline {
                 sh 'tar zxvf /tmp/docker.tgz -C /tmp'
                 sh 'sudo cp /tmp/docker/* /usr/bin/'
                 script {
-                    directory("${WORKSPACE}/docker") {
+                    dir("${WORKSPACE}/docker") {
                         app = docker.build("aardvark-base:${BUILD_NUMBER}", "-f docker/Dockerfile.aardvark-base")
                     }
                 }
