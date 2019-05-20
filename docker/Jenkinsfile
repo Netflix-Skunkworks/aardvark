@@ -45,9 +45,10 @@ pipeline {
             }
         }
 
-
         stage('Build image') {
-            app = docker.build("aardvark-base:${BUILD_NUMBER}", "-f docker/Dockerfile.aardvark-base")
+            steps {
+                app = docker.build("aardvark-base:${BUILD_NUMBER}", "-f docker/Dockerfile.aardvark-base")
+            }
         }
 
 
