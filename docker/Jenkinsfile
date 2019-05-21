@@ -22,7 +22,6 @@ pipeline {
                         }
                     }
                 }
-
             }
         }
         stage('Build apiserver image') {
@@ -38,6 +37,9 @@ pipeline {
                         docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
                             app.push("${env.BUILD_NUMBER}")
                             app.push("latest")
+                        }
+                    }
+                }
             }
         }
         stage('Build collector image') {
@@ -53,6 +55,9 @@ pipeline {
                         docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
                             app.push("${env.BUILD_NUMBER}")
                             app.push("latest")
+                        }
+                    }
+                }
             }
         }
     }
