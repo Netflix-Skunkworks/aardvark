@@ -15,14 +15,16 @@ pipeline {
                 script {
                     dir("${WORKSPACE}/docker") {
                         sh "mkdir aardvark && find .. -not -name docker -mindepth 1 -maxdepth 1 -exec cp -Rpv '{}' ./aardvark/ ';'"
-                        app = docker.build("aardvark-base:${BUILD_NUMBER}", ". -f Dockerfile.aardvark-base")
-                        docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
-                            app.push("${env.BUILD_NUMBER}")
-                            app.push("latest")
-                        }
+                        app_base = docker.build("aardvark-base:${BUILD_NUMBER}", ". -f Dockerfile.aardvark-base")
+                        // docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
+                        //     app_base.push("${env.BUILD_NUMBER}")
+                        //     app_base.push("latest")
+                        // }
                     }
                 }
-                cleanWs()
+                dir("${WORSPACE}/docker/aardvark") {
+                    deleteDir()
+                }
             }
         }
         stage('Build apiserver image') {
@@ -31,17 +33,20 @@ pipeline {
                 sh 'tar zxvf /tmp/docker.tgz -C /tmp'
                 sh 'sudo cp /tmp/docker/* /usr/bin/'
                 sh 'sudo chmod u+s /usr/bin/docker'
+                sh 'ls -l'
                 script {
                     dir("${WORKSPACE}/docker") {
                         sh "mkdir aardvark && find .. -not -name docker -mindepth 1 -maxdepth 1 -exec cp -Rpv '{}' ./aardvark/ ';'"
-                        app = docker.build("aardvark-apiserver:${BUILD_NUMBER}", ". -f Dockerfile.aardvark-apiserver")
-                        docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
-                            app.push("${env.BUILD_NUMBER}")
-                            app.push("latest")
-                        }
+                        app_apiserver = docker.build("aardvark-apiserver:${BUILD_NUMBER}", ". -f Dockerfile.aardvark-apiserver")
+                        // docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
+                        //     app_apiserver.push("${env.BUILD_NUMBER}")
+                        //     app_apiserver.push("latest")
+                        // }
                     }
                 }
-                cleanWs()
+                dir("${WORSPACE}/docker/aardvark") {
+                    deleteDir()
+                }
             }
         }
         stage('Build collector image') {
@@ -53,14 +58,16 @@ pipeline {
                 script {
                     dir("${WORKSPACE}/docker") {
                         sh "mkdir aardvark && find .. -not -name docker -mindepth 1 -maxdepth 1 -exec cp -Rpv '{}' ./aardvark/ ';'"
-                        app = docker.build("aardvark-collector:${BUILD_NUMBER}", ". -f Dockerfile.aardvark-collector")
-                        docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
-                            app.push("${env.BUILD_NUMBER}")
-                            app.push("latest")
-                        }
+                        app_collector = docker.build("aardvark-collector:${BUILD_NUMBER}", ". -f Dockerfile.aardvark-collector")
+                        // docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
+                        //     app_collector.push("${env.BUILD_NUMBER}")
+                        //     app_collector.push("latest")
+                        // }
                     }
                 }
-                cleanWs()
+                dir("${WORSPACE}/docker/aardvark") {
+                    deleteDir()
+                }
             }
         }
     }
