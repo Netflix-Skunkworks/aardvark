@@ -16,7 +16,7 @@ pipeline {
                     dir("${WORKSPACE}/docker") {
                         sh "mkdir aardvark && find .. -not -name docker -mindepth 1 -maxdepth 1 -exec cp -Rpv '{}' ./aardvark/ ';'"
                         sh 'ls -l'
-                        app = docker.build("aardvark-base:${BUILD_NUMBER}", ". -f Dockerfile.aardvark-base --build-arg AARDVARK_DB_URI=psql://${AARDVARK_DB_USERNAME}:${AARDVARK_DB_PASSWORD}@${AARDVARK_DB_ENDPOINT} --build-arg ${AARDVARK_ROLE}")
+                        app = docker.build("aardvark-base:${BUILD_NUMBER}", ". -f Dockerfile.aardvark-base --build-arg AARDVARK_DB_URI=\"psql://${AARDVARK_DB_USERNAME}:${AARDVARK_DB_PASSWORD}@${AARDVARK_DB_ENDPOINT}\" --build-arg \"${AARDVARK_ROLE}\"")
                     }
                 }
             }
