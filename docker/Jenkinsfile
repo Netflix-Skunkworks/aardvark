@@ -53,7 +53,7 @@ pipeline {
                 sh 'sudo chmod u+s /usr/bin/docker'
                 script {
                     dir("${WORKSPACE}/docker") {
-                        sh 'mkdir aardvark && find .. -not -name docker -mindepth 1 -maxdepth 1 -exec cp -Rpv {} ./aardvark/ ;'
+                        sh "mkdir aardvark && find .. -not -name docker -mindepth 1 -maxdepth 1 -exec cp -Rpv '{}' ./aardvark/ ';'"
                         sh 'ls -l'
                         app = docker.build("aardvark-base:${BUILD_NUMBER}", ". -f Dockerfile.aardvark-base")
                     }
