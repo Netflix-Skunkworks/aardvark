@@ -53,6 +53,7 @@ pipeline {
                 sh 'sudo chmod u+s /usr/bin/docker'
                 script {
                     dir("${WORKSPACE}/docker") {
+                        checkout scm
                         sh 'ls -l'
                         app = docker.build("aardvark-base:${BUILD_NUMBER}", ". -f Dockerfile.aardvark-base")
                     }
