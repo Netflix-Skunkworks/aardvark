@@ -1,7 +1,7 @@
 
 FROM python:2
 
-LABEL author="scottbrown0001@gmail.com"
+LABEL author="mbaciu@gopro.com"
 
 COPY aardvark /tmp/aardvark
 WORKDIR /tmp/aardvark

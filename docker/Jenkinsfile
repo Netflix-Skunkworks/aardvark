@@ -15,7 +15,6 @@ pipeline {
                 script {
                     dir("${WORKSPACE}/docker") {
                         sh "mkdir aardvark && find .. -not -name docker -mindepth 1 -maxdepth 1 -exec cp -Rpv '{}' ./aardvark/ ';'"
-                        sh 'ls -l'
                         app = docker.build("aardvark-base:${BUILD_NUMBER}", ". -f Dockerfile.aardvark-base --build-arg AARDVARK_DB_URI=\"psql://${AARDVARK_DB_USERNAME}:${AARDVARK_DB_PASSWORD}@${AARDVARK_DB_ENDPOINT}\" --build-arg AARDVARK_ROLE=\"${AARDVARK_ROLE}\"")
                     }
                 }
@@ -24,15 +23,11 @@ pipeline {
 
 
 
-    //     stage('Push image') {
-    // //        /* Finally, we'll push the image with two tags:
-    // //         * First, the incremental build number from Jenkins
-    // //         * Second, the 'latest' tag.
-    // //         * Pushing multiple tags is cheap, as all the layers are reused. */
-    // //        docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
-    // //            app.push("${env.BUILD_NUMBER}")
-    // //            app.push("latest")
-    // //        }
-    //     }
+        stage('Push image') {
+            docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
+                app.push("${env.BUILD_NUMBER}")
+                app.push("latest")
+            }
+        }
     }
 }
