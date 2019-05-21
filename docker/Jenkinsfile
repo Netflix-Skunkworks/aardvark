@@ -41,7 +41,7 @@ pipeline {
         stage('Test image') {
             steps {
                 sh 'env'
-                sh 'pwd; ls -la; ls -latR'
+                sh 'pwd; ls -la'
             }
         }
 
@@ -53,6 +53,7 @@ pipeline {
                 sh 'sudo chmod u+s /usr/bin/docker'
                 script {
                     dir("${WORKSPACE}/docker") {
+                        sh 'ls -l'
                         app = docker.build("aardvark-base:${BUILD_NUMBER}", ". -f Dockerfile.aardvark-base")
                     }
                 }
