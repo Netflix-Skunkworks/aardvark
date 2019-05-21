@@ -1,6 +1,6 @@
 
 ARG AARDVARK_IMAGES_TAG=latest
-FROM aardvark-base:${AARDVARK_IMAGES_TAG}
+FROM https://docker-registry.artifactory-infra.gopro-platform.com/aardvark-base:${AARDVARK_IMAGES_TAG}
 
 LABEL author="mbaciu@gopro.com"
 
