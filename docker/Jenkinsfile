@@ -36,13 +36,15 @@ pipeline {
                 sh 'ls -l'
                 script {
                     dir("${WORKSPACE}/docker") {
-                        sh "mkdir aardvark && find .. -not -name docker -mindepth 1 -maxdepth 1 -exec cp -Rp '{}' ./aardvark/ ';'"
-                        sh 'ls -l'
-                        app_apiserver = docker.build("aardvark-apiserver:${BUILD_NUMBER}", ". -f Dockerfile.apiserver")
-                        // docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
-                        //     app_apiserver.push("${env.BUILD_NUMBER}")
-                        //     app_apiserver.push("latest")
-                        // }
+                        docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
+                            sh "mkdir aardvark && find .. -not -name docker -mindepth 1 -maxdepth 1 -exec cp -Rp '{}' ./aardvark/ ';'"
+                            sh 'ls -l'
+                            app_apiserver = docker.build("aardvark-apiserver:${BUILD_NUMBER}", ". -f Dockerfile.apiserver")
+                            // docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
+                            //     app_apiserver.push("${env.BUILD_NUMBER}")
+                            //     app_apiserver.push("latest")
+                            // }
+                        }
                     }
                 }
                 dir("${WORKSPACE}/docker/aardvark") {
@@ -58,13 +60,15 @@ pipeline {
                 sh 'sudo chmod u+s /usr/bin/docker'
                 script {
                     dir("${WORKSPACE}/docker") {
-                        sh "mkdir aardvark && find .. -not -name docker -mindepth 1 -maxdepth 1 -exec cp -Rp '{}' ./aardvark/ ';'"
-                        sh 'ls -l'
-                        app_collector = docker.build("aardvark-collector:${BUILD_NUMBER}", ". -f Dockerfile.collector")
-                        // docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
-                        //     app_collector.push("${env.BUILD_NUMBER}")
-                        //     app_collector.push("latest")
-                        // }
+                        docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
+                            sh "mkdir aardvark && find .. -not -name docker -mindepth 1 -maxdepth 1 -exec cp -Rp '{}' ./aardvark/ ';'"
+                            sh 'ls -l'
+                            app_collector = docker.build("aardvark-collector:${BUILD_NUMBER}", ". -f Dockerfile.collector")
+                            // docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
+                            //     app_collector.push("${env.BUILD_NUMBER}")
+                            //     app_collector.push("latest")
+                            // }
+                        }
                     }
                 }
                 dir("${WORKSPACE}/docker/aardvark") {
