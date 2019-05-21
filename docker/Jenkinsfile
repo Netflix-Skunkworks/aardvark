@@ -16,17 +16,13 @@ pipeline {
                     dir("${WORKSPACE}/docker") {
                         sh "mkdir aardvark && find .. -not -name docker -mindepth 1 -maxdepth 1 -exec cp -Rpv '{}' ./aardvark/ ';'"
                         app = docker.build("aardvark-base:${BUILD_NUMBER}", ". -f Dockerfile.aardvark-base --build-arg AARDVARK_DB_URI=\"psql://${AARDVARK_DB_USERNAME}:${AARDVARK_DB_PASSWORD}@${AARDVARK_DB_ENDPOINT}\" --build-arg AARDVARK_ROLE=\"${AARDVARK_ROLE}\"")
+                        docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
+                            app.push("${env.BUILD_NUMBER}")
+                            app.push("latest")
+                        }
                     }
                 }
-            }
-        }
 
-
-
-        stage('Push image') {
-            docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
-                app.push("${env.BUILD_NUMBER}")
-                app.push("latest")
             }
         }
     }
