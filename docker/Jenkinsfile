@@ -22,6 +22,7 @@ pipeline {
                         }
                     }
                 }
+                cleanWs()
             }
         }
         stage('Build apiserver image') {
@@ -40,6 +41,7 @@ pipeline {
                         }
                     }
                 }
+                cleanWs()
             }
         }
         stage('Build collector image') {
@@ -58,6 +60,7 @@ pipeline {
                         }
                     }
                 }
+                cleanWs()
             }
         }
     }
