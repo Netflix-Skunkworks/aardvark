@@ -40,8 +40,18 @@ def create_app():
                 raise Exception('At least one of config variables {k} missing or empty.'.format(k=', '.join(config_json.keys())))
             session = boto3.session.Session(region_name=config_json['region'])
             client = session.client('secretsmanager')
-            secret = json.loads(client.get_secret_value(SecretId=config_json['secret_id']))['SecretString']
-            with open('/etc/aardvark/config.py') as fd:
+            print('Getting secret_response')
+            secret_response = client.get_secret_value(SecretId=config_json['secret_id'])
+            print(secret_response)
+            print(secret_response.__class__)
+            print('Getting secret')
+            secret = json.loads(secret_response['SecretString'])
+            print(secret)
+            print('Creating config dir')
+            if not os.path.isdir('/etc/aardvark'):
+                os.mkdir('etc/aardvark')
+            print('Generating config file')
+            with open('/etc/aardvark/config.py', 'w') as fd:
                 print >>fd, config_template.render(role_name=config_json['role_name'],
                                                    region=config_json['region'],
                                                    db_username=secret['username'],
