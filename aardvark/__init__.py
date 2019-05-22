@@ -33,11 +33,8 @@ def create_app():
         print('No config. Trying to generate one from a template.')
         try:
             env = Environment(loader=PackageLoader('aardvark', 'templates'), autoescape=select_autoescape(['html', 'xml']))
-            print(env.list_templates())
             config_template = env.get_template('config.py')
             config_json = json.loads(os.environ.get('config_json', {}))
-            print(os.environ)
-            print(config_json)
             if not set(['role_name', 'region', 'secret_id']) <= set(config_json.keys()) or \
                     len([v for v in config_json.itervalues() if not v]) > 0:
                 raise Exception('At least one of config variables {k} missing or empty.'.format(k=', '.join(config_json.keys())))
@@ -51,8 +48,8 @@ def create_app():
                                                    db_password=secret['password'],
                                                    db_endpoint=secret['host'],
                                                    db_name=secret['dbname'])
-        except Exception:
-            print('Failed generating config from template. Falling back to hardcoded values.')
+        except Exception as e:
+            print('Failed generating config from template. Falling back to hardcoded values: {e}'.format(e=repr(e)))
             # no template found; catchall
             app.config.from_pyfile('_config.py')
     else:
