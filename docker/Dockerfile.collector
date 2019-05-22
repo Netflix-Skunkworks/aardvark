@@ -15,4 +15,4 @@ COPY aardvark-collector.cronjob /etc/cron.d/aardvark-collector
 
 RUN chmod 0644 /etc/cron.d/aardvark-collector
 
-CMD sed -i -e "s/AARDVARK_CRONJOB_SPEC/$AARDVARK_CRONJOB_SPEC/g" "-e "s/AARDVARK_ACCOUNTS/$AARDVARK_ACCOUNTS/g" /etc/cron.d/aardvark-collector && cron -f
+CMD aardvark create_db && sed -i -e "s/AARDVARK_CRONJOB_SPEC/$AARDVARK_CRONJOB_SPEC/g" "-e "s/AARDVARK_ACCOUNTS/$AARDVARK_ACCOUNTS/g" /etc/cron.d/aardvark-collector && cron -f
