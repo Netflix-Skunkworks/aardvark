@@ -12,4 +12,5 @@ RUN mkdir -p $AARDVARK_DATA_DIR
 # This is superflous unless we're using a local data volume.
 WORKDIR $AARDVARK_DATA_DIR
 
-CMD aardvark start_api -b 0.0.0.0:$AARDVARK_API_PORT
+# Create tables if they don't exist and start the api
+CMD aardvark create_db && aardvark start_api -b 0.0.0.0:$AARDVARK_API_PORT
