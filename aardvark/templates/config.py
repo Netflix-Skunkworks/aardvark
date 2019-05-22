@@ -1,6 +1,6 @@
 ROLENAME = "{{ role_name }}"
 REGION = "{{ aws_region }}"
-SQLALCHEMY_DATABASE_URI = "psql://{{ db_username }}:{{ db_password }}@{{ db_endpoint }}/{{ db_name }}"
+SQLALCHEMY_DATABASE_URI = "postgresql://{{ db_username }}:{{ db_password }}@{{ db_endpoint }}/{{ db_name }}"
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 NUM_THREADS = 5
 LOG_CFG = {
