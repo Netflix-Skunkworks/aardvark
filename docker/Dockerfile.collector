@@ -7,8 +7,12 @@ LABEL author="mbaciu@gopro.com"
 ARG AARDVARK_DATA_DIR="/usr/share/aardvark-data"
 
 ENV AARDVARK_ACCOUNTS=''
+ENV AARDVARK_CRONJOB_SPEC='0 0 * * *'
 
-RUN mkdir -p $AARDVARK_DATA_DIR
-WORKDIR $AARDVARK_DATA_DIR
+RUN apt install -y cron
 
-CMD aardvark update -a $AARDVARK_ACCOUNTS
+COPY aardvark-collector.cronjob /etc/cron.d/aardvark-collector
+
+RUN chmod 0644 /etc/cron.d/aardvark-collector
+
+CMD sed -i -e "s/AARDVARK_CRONJOB_SPEC/$AARDVARK_CRONJOB_SPEC/g" "-e "s/AARDVARK_ACCOUNTS/$AARDVARK_ACCOUNTS/g" /etc/cron.d/aardvark-collector && cron -f
