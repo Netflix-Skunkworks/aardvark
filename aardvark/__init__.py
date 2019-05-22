@@ -32,6 +32,9 @@ def create_app():
     if not path:
         print('No config. Trying to generate one from a template.')
         try:
+            config_dir = '/etc/aardvark'
+            config_file = 'config.py'
+            config_fullpath = os.path.join(config_dir, config_file)
             env = Environment(loader=PackageLoader('aardvark', 'templates'), autoescape=select_autoescape(['html', 'xml']))
             config_template = env.get_template('config.py')
             config_json = json.loads(os.environ.get('config_json', {}))
@@ -48,16 +51,17 @@ def create_app():
             secret = json.loads(secret_response['SecretString'])
             print(secret)
             print('Creating config dir')
-            if not os.path.isdir('/etc/aardvark'):
-                os.mkdir('etc/aardvark')
+            if not os.path.isdir(config_dir):
+                os.mkdir(config_dir)
             print('Generating config file')
-            with open('/etc/aardvark/config.py', 'w') as fd:
+            with open(config_fullpath, 'w') as fd:
                 print >>fd, config_template.render(role_name=config_json['role_name'],
                                                    region=config_json['region'],
                                                    db_username=secret['username'],
                                                    db_password=secret['password'],
                                                    db_endpoint=secret['host'],
                                                    db_name=secret['dbname'])
+            app.config.from_pyfile(config_fullpath)
         except Exception as e:
             print('Failed generating config from template. Falling back to hardcoded values: {e}'.format(e=repr(e)))
             # no template found; catchall
