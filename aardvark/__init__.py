@@ -56,7 +56,7 @@ def create_app():
             print('Generating config file')
             with open(config_fullpath, 'w') as fd:
                 print >>fd, config_template.render(role_name=config_json['role_name'],
-                                                   region=config_json['region'],
+                                                   aws_region=config_json['region'],
                                                    db_username=secret['username'],
                                                    db_password=secret['password'],
                                                    db_endpoint=secret['host'],
