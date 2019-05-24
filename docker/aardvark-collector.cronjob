@@ -1,1 +1,1 @@
-AARDVARK_CRONJOB_SPEC root aardvark update -a AARDVARK_ACCOUNTS >> /var/log/cron.log
+AARDVARK_CRONJOB_SPEC root /usr/local/bin/aardvark update -a AARDVARK_ACCOUNTS >> /var/log/cron.log
