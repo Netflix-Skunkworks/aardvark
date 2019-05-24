@@ -31,7 +31,7 @@ LOG_CFG = {
     },
     'loggers': {
         'aardvark': {
-            'handlers': ['file', 'console'],
+            'handlers': ['console', 'file'],
             'level': 'DEBUG'
         }
     }
