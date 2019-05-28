@@ -1,0 +1,77 @@
+def app
+
+pipeline {
+    agent {
+        label 'ecs-gopro'
+    }
+
+    stages {
+        stage('Build base image') {
+            steps {
+                sh 'wget -o /dev/null -O /tmp/docker.tgz https://download.docker.com/linux/static/stable/x86_64/docker-17.09.1-ce.tgz'
+                sh 'tar zxvf /tmp/docker.tgz -C /tmp'
+                sh 'sudo cp /tmp/docker/* /usr/bin/'
+                sh 'sudo chmod u+s /usr/bin/docker'
+                script {
+                    dir("${WORKSPACE}/docker") {
+                        sh "mkdir aardvark && find .. -not -name docker -mindepth 1 -maxdepth 1 -exec cp -Rp '{}' ./aardvark/ ';'"
+                        app_base = docker.build("aardvark-base:${BUILD_NUMBER}", ". -f Dockerfile.aardvark-base")
+                        docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
+                            app_base.push("${env.BUILD_NUMBER}")
+                            app_base.push("latest")
+                        }
+                    }
+                }
+                dir("${WORKSPACE}/docker/aardvark") {
+                    deleteDir()
+                }
+            }
+        }
+        stage('Build apiserver image') {
+            steps {
+                sh 'wget -o /dev/null -O /tmp/docker.tgz https://download.docker.com/linux/static/stable/x86_64/docker-17.09.1-ce.tgz'
+                sh 'tar zxvf /tmp/docker.tgz -C /tmp'
+                sh 'sudo cp /tmp/docker/* /usr/bin/'
+                sh 'sudo chmod u+s /usr/bin/docker'
+                script {
+                    dir("${WORKSPACE}/docker") {
+                        docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
+                            sh "mkdir aardvark && find .. -not -name docker -mindepth 1 -maxdepth 1 -exec cp -Rp '{}' ./aardvark/ ';'"
+                            app_apiserver = docker.build("aardvark-apiserver:${BUILD_NUMBER}", ". -f Dockerfile.apiserver")
+                            docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
+                                app_apiserver.push("${env.BUILD_NUMBER}")
+                                app_apiserver.push("latest")
+                            }
+                        }
+                    }
+                }
+                dir("${WORKSPACE}/docker/aardvark") {
+                    deleteDir()
+                }
+            }
+        }
+        stage('Build collector image') {
+            steps {
+                sh 'wget -o /dev/null -O /tmp/docker.tgz https://download.docker.com/linux/static/stable/x86_64/docker-17.09.1-ce.tgz'
+                sh 'tar zxvf /tmp/docker.tgz -C /tmp'
+                sh 'sudo cp /tmp/docker/* /usr/bin/'
+                sh 'sudo chmod u+s /usr/bin/docker'
+                script {
+                    dir("${WORKSPACE}/docker") {
+                        docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
+                            sh "mkdir aardvark && find .. -not -name docker -mindepth 1 -maxdepth 1 -exec cp -Rp '{}' ./aardvark/ ';'"
+                            app_collector = docker.build("aardvark-collector:${BUILD_NUMBER}", ". -f Dockerfile.collector")
+                            docker.withRegistry("${ART_SERVER}", 'a90b9141-9b65-4652-9ce0-4394bcd9da0c') {
+                                app_collector.push("${env.BUILD_NUMBER}")
+                                app_collector.push("latest")
+                            }
+                        }
+                    }
+                }
+                dir("${WORKSPACE}/docker/aardvark") {
+                    deleteDir()
+                }
+            }
+        }
+    }
+}
