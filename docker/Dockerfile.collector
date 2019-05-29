@@ -15,4 +15,10 @@ COPY aardvark-collector.cronjob /etc/cron.d/aardvark-collector
 
 RUN chmod 0644 /etc/cron.d/aardvark-collector
 
-CMD aardvark create_db && sed -i -e "s/AARDVARK_CRONJOB_SPEC/$AARDVARK_CRONJOB_SPEC/g" -e "s/AARDVARK_ACCOUNTS/$AARDVARK_ACCOUNTS/g" /etc/cron.d/aardvark-collector && cron -f
+CMD aardvark create_db && \
+    sed -i -e "s/AARDVARK_CRONJOB_SPEC/$AARDVARK_CRONJOB_SPEC/g" \
+           -e "s/AARDVARK_ACCOUNTS/$AARDVARK_ACCOUNTS/g" \
+           -e "s#ENV_AWS_CONTAINER_CREDENTIALS_RELATIVE_URI#$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI#g" \
+           -e "s#ENV_AWS_CONTAINER_CREDENTIALS_FULL_URI#$AWS_CONTAINER_CREDENTIALS_FULL_URI#g" \
+           -e "s#ENV_AWS_CONTAINER_AUTHORIZATION_TOKEN#$AWS_CONTAINER_AUTHORIZATION_TOKEN#g" \
+           /etc/cron.d/aardvark-collector && cron -f
