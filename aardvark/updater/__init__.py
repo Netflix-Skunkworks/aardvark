@@ -113,8 +113,11 @@ class AccountToUpdate(object):
     def _generate_job_ids(self, iam, arns):
         jobs = {}
         for role_arn in arns:
-            job_id = self._generate_service_last_accessed_details(iam, role_arn)
-            jobs[job_id] = role_arn
+            try:
+                job_id = self._generate_service_last_accessed_details(iam, role_arn)
+                jobs[job_id] = role_arn
+            except Exception as e:
+                self.current_app.logger.error('Could not gather data from {0}.'.format(role_arn))
         return jobs
 
     def _get_job_results(self, iam, jobs):
@@ -134,7 +137,11 @@ class AccountToUpdate(object):
             # Pull next job ID
             job_id = job_queue.pop()
             role_arn = jobs[job_id]
-            details = self._get_service_last_accessed_details(iam, job_id)
+            try:
+                details = self._get_service_last_accessed_details(iam, job_id)
+            except Exception as e:
+                self.current_app.logger.error('Could not gather data from {0}.'.format(role_arn))
+                continue
 
             # Check job status
             if details['JobStatus'] == 'IN_PROGRESS':
