@@ -1,20 +1,14 @@
 
 ARG AARDVARK_IMAGES_TAG=latest
-FROM docker-registry.artifactory-infra.gopro-platform.com/aardvark-base:${AARDVARK_IMAGES_TAG}
+FROM aardvark-base:${AARDVARK_IMAGES_TAG}
 
-LABEL author="mbaciu@gopro.com"
+LABEL author="scottbrown0001@gmail.com"
 
 ARG AARDVARK_DATA_DIR="/usr/share/aardvark-data"
 
 ENV AARDVARK_ACCOUNTS=''
-ENV AARDVARK_CRONJOB_SPEC='0 0 * * *'
 
-RUN apt install -y cron
+RUN mkdir -p $AARDVARK_DATA_DIR
+WORKDIR $AARDVARK_DATA_DIR
 
-COPY aardvark-collector.cronjob /etc/cron.d/aardvark-collector
-
-RUN chmod 0644 /etc/cron.d/aardvark-collector
-
-
-COPY start_collector.sh /tmp/aardvark/start_collector.sh
-CMD /tmp/aardvark/start_collector.sh
+CMD aardvark update -a $AARDVARK_ACCOUNTS

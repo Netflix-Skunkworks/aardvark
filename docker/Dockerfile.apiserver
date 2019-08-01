@@ -1,8 +1,8 @@
 
 ARG AARDVARK_IMAGES_TAG=latest
-FROM docker-registry.artifactory-infra.gopro-platform.com/aardvark-base:${AARDVARK_IMAGES_TAG}
+FROM aardvark-base:${AARDVARK_IMAGES_TAG}
 
-LABEL author="mbaciu@gopro.com"
+LABEL author="scottbrown0001@gmail.com"
 
 ARG AARDVARK_DATA_DIR="/usr/share/aardvark-data"
 ENV AARDVARK_API_PORT="5000"
@@ -12,5 +12,4 @@ RUN mkdir -p $AARDVARK_DATA_DIR
 # This is superflous unless we're using a local data volume.
 WORKDIR $AARDVARK_DATA_DIR
 
-# Create tables if they don't exist and start the api
-CMD aardvark create_db && aardvark start_api -b 0.0.0.0:$AARDVARK_API_PORT
+CMD aardvark start_api -b 0.0.0.0:$AARDVARK_API_PORT
