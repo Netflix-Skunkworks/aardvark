@@ -79,6 +79,7 @@ class UpdateAccountThread(threading.Thread):
                 persist_aa_data(self.app, aa_data)
                 DB_LOCK.release()
 
+                self.app.logger.info("Thread #{} FINISHED persisting data for account {}".format(self.thread_ID, account_num))
             else:
                 QUEUE_LOCK.release()
 
