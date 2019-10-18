@@ -1,3 +1,6 @@
+#ensure absolute import for python3
+from __future__ import absolute_import
+
 import os.path
 import logging
 from logging import DEBUG, Formatter, StreamHandler

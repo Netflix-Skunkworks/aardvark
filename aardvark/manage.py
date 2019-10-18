@@ -1,6 +1,12 @@
+#ensure absolute import for python3
+from __future__ import absolute_import
+
 import json
 import os
-import Queue
+try:
+    import queue as Queue # Queue renamed to queue in py3 
+except ModuleNotFoundError:
+    import Queue
 import re
 import threading
 
