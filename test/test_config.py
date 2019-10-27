@@ -35,6 +35,9 @@ names "commands.[TestClassName]".
 
 '''
 
+#adding for py3 support
+from __future__ import absolute_import
+
 import inspect
 import os
 import shutil

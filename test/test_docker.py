@@ -1,5 +1,9 @@
-'''Test cases for docker container creation.
 '''
+Test cases for docker container creation.
+'''
+
+#adding for py3 support
+from __future__ import absolute_import
 
 import logging
 import os
