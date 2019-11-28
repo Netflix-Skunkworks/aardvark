@@ -410,5 +410,5 @@ $(AARDVARK_BASE_DOCKER_BUILD_PSEUDO): $(PREREQUISITES)
 		fi
 
 # - - - - - - - - - - - - - - - -
-aardvark:		## Clone the aardvark repository.
+aardvark:
 	git clone https://github.com/Netflix-Skunkworks/aardvark.git
