@@ -5,6 +5,9 @@ with a support for regular expression operators in Postgres and SQLite.
 
 # courtesy of Xion: http://xion.io/post/code/sqlalchemy-regex-filters.html
 
+#ensure absolute import for python3
+from __future__ import absolute_import
+
 import re
 
 from sqlalchemy import String as _String, event, exc

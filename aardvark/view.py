@@ -1,3 +1,6 @@
+#ensure absolute import for python3
+from __future__ import absolute_import
+
 import better_exceptions  # noqa
 import datetime
 import json
