@@ -154,13 +154,13 @@ def interact(
         import json
         if prompt_index < timeout_position:
             responses.append(
-                spawn.before.replace('\r\n', '\n')
+                spawn.before.decode('utf-8').replace('\r\n', '\n')
                 )
             # print '--------'
             logger.debug('    BEFORE: %s', json.dumps(responses[-1]))
             logger.debug(
                 '    AFTER: %s',
-                json.dumps(spawn.after.replace('\r\n', '\n'))
+                json.dumps(spawn.after.decode("utf-8").replace('\r\n', '\n'))
                 )
             if command and responses[-1].startswith(command + '\n'):
                 result = response_filter(
@@ -401,7 +401,9 @@ class TestDockerBase(unittest.TestCase):
             (x.split(':') + ['latest'])[0:2] for x in expected_images
             ] if expected_images else None
 
-        for line in docker_images_response.split('\n'):
+        docker_images_response_l = docker_images_response.decode('utf-8').split('\n')
+
+        for line in docker_images_response_l:
             match = image_listing_re.match(line)
             if (
                     match and (
@@ -438,7 +440,9 @@ class TestDockerBase(unittest.TestCase):
         #     (x.split(':') + ['latest'])[0:2] for x in expected_containers
         #     ] if expected_containers else []
 
-        for line in docker_containers_response.split('\n'):
+        docker_containers_response_l = docker_containers_response.decode('utf-8').split('\n')
+
+        for line in docker_containers_response_l:
             match = container_listing_re.match(line)
             if match:
                 container_list.append(match.groupdict())
@@ -459,9 +463,11 @@ class TestDockerBase(unittest.TestCase):
 
         docker_volumes_response = pexpect.run('docker volume ls')
 
+        docker_volumes_response_l = docker_volumes_response.decode('utf-8').split('\n')
+
         volume_list = []
 
-        for line in docker_volumes_response.split('\n'):
+        for line in docker_volumes_response_l:
             match = volume_listing_re.match(line)
             if match:
                 volume_list.append(match.groupdict())
@@ -600,7 +606,7 @@ class TestDockerBase(unittest.TestCase):
             'incorrect': {}
             }
 
-        for k, v in expected_container_details.iteritems():
+        for k, v in expected_container_details.items():
 
             logger.info(' -- checking configuration item %s...', k)
             logger.info('    expected: %s', v)
@@ -680,17 +686,18 @@ class TestDockerBase(unittest.TestCase):
         # those with specific case settings.
         spawn_env = dict(
             map(
-                lambda x: x.strip().split('='),
-                pexpect.run('env').strip().split("\n")
+                lambda x: x.strip().split('=', 1),
+                pexpect.run('env').strip().decode("utf-8").split("\n")
                 )
             )
+
         # Remove any build control variables we inherit from the test
         # environment - we want complete control over which are
         # visible to the make process in the pexpect call.
         spawn_env = {
-            k: v for (k, v) in spawn_env.iteritems()
+            k: v for (k, v) in spawn_env.items()
             if k not in BUILD_CONTROL_ENV_VARIABLES
-            }
+        }
 
         command = 'make {}'.format(target)
         logger.info('COMMAND: %s', command)
@@ -723,7 +730,7 @@ class TestDockerBase(unittest.TestCase):
             )
 
         if expected_docker_images:
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 [
                     [x['name'], x['tag']]
                     for x in self.get_docker_image_list(

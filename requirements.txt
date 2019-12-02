@@ -1,4 +1,3 @@
--e git+git@github.com:curtis-turner/aardvark.git@c2cf955bf96569d819afb9da54c480bc99630b6d#egg=aardvark
 aniso8601==8.0.0
 astroid==2.3.1
 attrs==19.3.0
