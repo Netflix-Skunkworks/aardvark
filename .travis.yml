@@ -11,7 +11,8 @@ matrix:
         - python: pypy
         - python: pypy3
 install:
-    #- pip install -r requirements.txt
+    - pip install -r requirements.txt
+    - python setup.py develop
     - pip install flake8  # pytest  # add another testing frameworks later
 before_script:
     # stop the build if there are Python syntax errors or undefined names
