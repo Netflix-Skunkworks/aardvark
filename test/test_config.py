@@ -440,7 +440,7 @@ class TestConfigBase(unittest.TestCase):
             found_config = load_configfile(cmdline_option_spec)
             expected_config = get_expected_config(option_spec)
 
-            self.assertItemsEqual(expected_config.keys(), found_config.keys())
+            self.assertCountEqual(expected_config.keys(), found_config.keys())
             for k, v in found_config.items():
                 self.assertEqual((k, v), (k, expected_config[k]))
 
