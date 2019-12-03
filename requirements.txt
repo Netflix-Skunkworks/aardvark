@@ -44,7 +44,7 @@ psycopg2==2.7.7
 ptyprocess==0.6.0
 pylint==2.4.2
 pyrsistent==0.15.4
-python-dateutil==2.8.0
+python-dateutil==2.8.1
 pytz==2017.2
 PyYAML==5.1.2
 requests==2.22.0
