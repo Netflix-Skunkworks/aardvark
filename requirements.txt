@@ -10,7 +10,7 @@ certifi==2019.9.11
 chardet==3.0.4
 Click==7.0
 click-log==0.3.2
-cloudaux==1.7.0
+cloudaux==1.7.2
 decorator==4.4.0
 deepdiff==3.3.0
 defusedxml==0.6.0
