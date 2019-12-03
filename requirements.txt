@@ -32,7 +32,7 @@ Jinja2==2.10.3
 jmespath==0.9.4
 joblib==0.14.0
 jsonpickle==1.2
-jsonschema==3.1.1
+jsonschema==3.2.0
 lazy-object-proxy==1.4.2
 MarkupSafe==1.1.1
 marshmallow==2.20.5
