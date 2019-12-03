@@ -1,5 +1,5 @@
 aniso8601==8.0.0
-astroid==2.3.1
+astroid==2.3.3
 attrs==19.3.0
 better-exceptions==0.1.7
 boto==2.49.0
