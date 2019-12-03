@@ -42,7 +42,7 @@ more-itertools==7.2.0
 pexpect==4.7.0
 psycopg2==2.7.7
 ptyprocess==0.6.0
-pylint==2.4.2
+pylint==2.4.4
 pyrsistent==0.15.4
 python-dateutil==2.8.0
 pytz==2017.2
