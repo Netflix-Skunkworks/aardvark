@@ -15,7 +15,7 @@ decorator==4.4.0
 deepdiff==3.3.0
 defusedxml==0.6.0
 docutils==0.15.2
-dogpile.cache==0.8.0
+dogpile.cache==0.9.0
 flagpole==1.1.1
 flasgger==0.6.3
 Flask==1.0.2
