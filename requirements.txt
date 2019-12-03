@@ -33,7 +33,7 @@ jmespath==0.9.4
 joblib==0.14.0
 jsonpickle==1.2
 jsonschema==3.1.1
-lazy-object-proxy==1.4.2
+lazy-object-proxy==1.4.3
 MarkupSafe==1.1.1
 marshmallow==2.20.5
 mccabe==0.6.1
