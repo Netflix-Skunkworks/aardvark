@@ -38,7 +38,7 @@ install_requires = [
     'psycopg2~=2.7.4',
     'pytz==2017.2',
     'swag-client==0.4.6',
-    'tqdm==4.11.2',
+    'tqdm==4.40.0',
     'deepdiff==3.3.0'  # Pinning to last py2 compatible version. Needed for swag-client.
 ]
 
