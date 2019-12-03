@@ -6,7 +6,7 @@ boto==2.49.0
 boto3==1.9.252
 botocore==1.12.252
 bunch==1.0.1
-certifi==2019.9.11
+certifi==2019.11.28
 chardet==3.0.4
 Click==7.0
 click-log==0.3.2
