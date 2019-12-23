@@ -94,7 +94,7 @@ class AccountToUpdate(object):
         :return: boto3 IAM client in target account & role
         """
         client = boto3_cached_conn(
-            'iam', account_number=self.account_number, assume_role=self.role_name)
+            'iam', **self.conn_details)
         return client
 
     def _call_access_advisor(self, iam, arns):
