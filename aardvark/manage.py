@@ -4,7 +4,7 @@ from __future__ import absolute_import
 import json
 import os
 try:
-    import queue as Queue # Queue renamed to queue in py3 
+    import queue as Queue # Queue renamed to queue in py3
 except ModuleNotFoundError:
     import Queue
 import re
@@ -247,6 +247,7 @@ def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, n
             filedata.write("SWAG_SERVICE_ENABLED_REQUIREMENT = None\n")
         filedata.write('ROLENAME = "{role}"\n'.format(role=aardvark_role))
         filedata.write('REGION = "us-east-1"\n')
+        filedata.write('ARN_PARTITION = "aws"\n')
         filedata.write('SQLALCHEMY_DATABASE_URI = "{uri}"\n'.format(uri=db_uri))
         filedata.write('SQLALCHEMY_TRACK_MODIFICATIONS = False\n')
         filedata.write('NUM_THREADS = {num_threads}\n'.format(num_threads=num_threads))
