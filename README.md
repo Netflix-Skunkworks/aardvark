@@ -129,12 +129,13 @@ AWS_SECRET_ACCESS_KEY=<you secret key>
 
 | Name | Service | Description |
 |---|---|---|
-| `AARDVARK_ROLE` | collector | The name of the role for Aardvark to assume so that it can collect the data. |
-| `AARDVARK_ACCOUNTS` | collector | Optional if using SWAG, otherwise required. Set this to a list of SWAG account name tags or a list of AWS account numbers from which to collect Access Advisor records. |
+| `AARDVARK_ROLE` | `collector` | The name of the role for Aardvark to assume so that it can collect the data. |
+| `AARDVARK_ACCOUNTS` | `collector` | Optional if using SWAG, otherwise required. Set this to a list of SWAG account name tags or a list of AWS account numbers from which to collect Access Advisor records. |
 | `AWS_ARN_PARTITION` | `collector` | Required if not using an AWS Commercial region. For example, `aws-us-gov`. By default, this is `aws`. |
-| `AWS_DEFAULT_REGION` | collector | Required if not running on an EC2 instance with an appropriate Instance Profile. Set these to the credentials of an AWS IAM user with permission to `sts:AssumeRole` to the Aardvark audit role. |
-| `AWS_ACCESS_KEY_ID` | collector | Required if not running on an EC2 instance with an appropriate Instance Profile. Set these to the credentials of an AWS IAM user with permission to `sts:AssumeRole` to the Aardvark audit role. |
-| `AWS_SECRET_ACCESS_KEY` | collector | Required if not running on an EC2 instance with an appropriate Instance Profile. Set these to the credentials of an AWS IAM user with permission to `sts:AssumeRole` to the Aardvark audit role. |
+| `AWS_DEFAULT_REGION` | `collector` | Required if not running on an EC2 instance with an appropriate Instance Profile. Set these to the credentials of an AWS IAM user with permission to `sts:AssumeRole` to the Aardvark audit role. |
+| `AWS_ACCESS_KEY_ID` | `collector` | Required if not running on an EC2 instance with an appropriate Instance Profile. Set these to the credentials of an AWS IAM user with permission to `sts:AssumeRole` to the Aardvark audit role. |
+| `AWS_SECRET_ACCESS_KEY` | `collector` | Required if not running on an EC2 instance with an appropriate Instance Profile. Set these to the credentials of an AWS IAM user with permission to `sts:AssumeRole` to the Aardvark audit role. |
+| `AARDVARK_DATABASE_URI` | `collector` and `apiserver` | Specify a custom database URI supported by SQL Alchemy. By default, this will use the `AARDVARK_DATA_DIR` value to create a SQLLite Database. Example: `sqlite:///$AARDVARK_DATA_DIR/aardvark.db` |
 
 Once this file is created, then build the containers and start the services. Aardvark consists of three services:
 
