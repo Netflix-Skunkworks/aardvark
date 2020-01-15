@@ -19,7 +19,8 @@ class AccountToUpdate(object):
             'account_number': account_number,
             'assume_role': role_name,
             'session_name': 'aardvark',
-            'region': self.current_app.config.get('REGION') or 'us-east-1'
+            'region': self.current_app.config.get('REGION') or 'us-east-1',
+            'arn_partition': self.current_app.config.get('ARN_PARTITION') or 'aws'
         }
         self.max_access_advisor_job_wait = 5 * 60  # Wait 5 minutes before giving up on jobs
 
@@ -93,7 +94,7 @@ class AccountToUpdate(object):
         :return: boto3 IAM client in target account & role
         """
         client = boto3_cached_conn(
-            'iam', account_number=self.account_number, assume_role=self.role_name)
+            'iam', **self.conn_details)
         return client
 
     def _call_access_advisor(self, iam, arns):
