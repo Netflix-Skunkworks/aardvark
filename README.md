@@ -113,6 +113,54 @@ curl localhost:5000/api/1/advisors?arn=arn:aws:iam::000000000000:role/SecurityMo
 curl localhost:5000/api/1/advisors?regex=^.*Monkey$
 ```
 
+## Docker
+
+Aardvark can also be deployed with Docker and Docker Compose. The Aardvark services are built on a shared container. You will need Docker and Docker Compose installed for this to work.
+
+To configure the containers for your set of accounts create a `.env` file in the root of this directory. Define the environment variables within this file. This example uses AWS Access Keys. We recommend using instance roles in production.
+
+```text
+AARDVARK_ROLE=Aardvark
+AARDVARK_ACCOUNTS=<account id>
+AWS_DEFAULT_REGION=<aws region>
+AWS_ACCESS_KEY_ID=<your access key>
+AWS_SECRET_ACCESS_KEY=<you secret key>
+```
+
+| Name | Service | Description |
+|---|---|---|
+| `AARDVARK_ROLE` | `collector` | The name of the role for Aardvark to assume so that it can collect the data. |
+| `AARDVARK_ACCOUNTS` | `collector` | Optional if using SWAG, otherwise required. Set this to a list of SWAG account name tags or a list of AWS account numbers from which to collect Access Advisor records. |
+| `AWS_ARN_PARTITION` | `collector` | Required if not using an AWS Commercial region. For example, `aws-us-gov`. By default, this is `aws`. |
+| `AWS_DEFAULT_REGION` | `collector` | Required if not running on an EC2 instance with an appropriate Instance Profile. Set these to the credentials of an AWS IAM user with permission to `sts:AssumeRole` to the Aardvark audit role. |
+| `AWS_ACCESS_KEY_ID` | `collector` | Required if not running on an EC2 instance with an appropriate Instance Profile. Set these to the credentials of an AWS IAM user with permission to `sts:AssumeRole` to the Aardvark audit role. |
+| `AWS_SECRET_ACCESS_KEY` | `collector` | Required if not running on an EC2 instance with an appropriate Instance Profile. Set these to the credentials of an AWS IAM user with permission to `sts:AssumeRole` to the Aardvark audit role. |
+| `AARDVARK_DATABASE_URI` | `collector` and `apiserver` | Specify a custom database URI supported by SQL Alchemy. By default, this will use the `AARDVARK_DATA_DIR` value to create a SQLLite Database. Example: `sqlite:///$AARDVARK_DATA_DIR/aardvark.db` |
+
+Once this file is created, then build the containers and start the services. Aardvark consists of three services:
+
+- Init - The init container creates the database within the storage volume.
+- API Server - This is the HTTP webserver will serve the data. By default, this is listening on [http://localhost:5000/apidocs/#!](http://localhost:5000/apidocs/#!).
+- Collector - This is a daemon that will fetch and cache the data in the local SQL database. This should be run periodically.
+
+```bash
+# build the containers
+docker-compose build
+
+# start up the containers
+docker-compose up
+```
+
+Finally, to clean up the environment
+
+```bash
+# bring down the containers
+docker-compose down
+
+# remove the containers
+docker-compoes rm
+```
+
 ## Notes
 
 ### Threads

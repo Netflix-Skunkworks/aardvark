@@ -1,0 +1,34 @@
+version: '3'
+
+services:
+
+  init:
+    build: .
+    image: netflixoss/aardvark:latest
+    volumes:
+      - data:/data
+    env_file: .env
+    command: [ "aardvark", "create_db" ]
+
+  api:
+    build: .
+    image: netflixoss/aardvark:latest
+    depends_on:
+      - init
+    ports:
+      - 5000:5000
+    volumes:
+      - data:/data
+    env_file: .env
+    command: [ "aardvark", "start_api", "-b", "0.0.0.0:5000" ]
+
+  collector:
+    build: .
+    image: netflixoss/aardvark:latest
+    depends_on:
+      - init
+    restart: always
+    volumes:
+      - data:/data
+    env_file: .env
+    command: [ "aardvark", "update", "-a", "$AARDVARK_ACCOUNTS" ]

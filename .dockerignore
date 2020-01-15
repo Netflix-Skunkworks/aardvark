@@ -1,0 +1,5 @@
+./docker
+./docs
+./.travis.yml
+./.env
+./docker-compose.yml
