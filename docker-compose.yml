@@ -32,3 +32,6 @@ services:
       - data:/data
     env_file: .env
     command: [ "aardvark", "update", "-a", "$AARDVARK_ACCOUNTS" ]
+
+volumes:
+  data:

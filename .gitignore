@@ -98,3 +98,9 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# mypy stuff
+.mypy_cache/
+
+# config
+config.py
