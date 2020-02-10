@@ -61,6 +61,7 @@ setup(
     url=about["__uri__"],
     description=about["__summary__"],
     long_description=open(os.path.join(ROOT, 'README.md')).read(),
+    long_description_content_type="text/markdown",
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
