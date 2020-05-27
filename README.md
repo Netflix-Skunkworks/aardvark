@@ -12,7 +12,7 @@ Aardvark is a multi-account AWS IAM Access Advisor API (and caching layer).
 Ensure that you have Python 3.6 or later. Python 2 is no longer supported.
 
 ```bash
-git clone git@github.com:Netflix-Skunkworks/aardvark.git
+git clone https://github.com/Netflix-Skunkworks/aardvark.git
 cd aardvark
 python3 -m venv env
 . env/bin/activate
