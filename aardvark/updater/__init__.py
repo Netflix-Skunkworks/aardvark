@@ -13,6 +13,7 @@ from cloudaux.aws.decorators import rate_limited
 class AccountToUpdate(object):
     on_ready = Signal()
     on_complete = Signal()
+    on_error = Signal()
     on_failure = Signal()
 
     def __init__(self, current_app, account_number, role_name, arns_list):
@@ -49,9 +50,9 @@ class AccountToUpdate(object):
         client = self._get_client()
         try:
             details = self._call_access_advisor(client, list(arns))
-        except Exception:
-            self.on_failure.send(self)
-            self.current_app.logger.exception('Failed to call access advisor')
+        except Exception as e:
+            self.on_failure.send(self, error=e)
+            self.current_app.logger.exception('Failed to call access advisor', exc_info=True)
             return 255, None
         else:
             self.on_complete.send(self)
@@ -131,8 +132,9 @@ class AccountToUpdate(object):
             except iam.exceptions.NoSuchEntityException:
                 """ We're here because this ARN disappeared since the call to self._get_arns(). Log the missing ARN and move along.  """
                 self.current_app.logger.info('ARN {arn} found gone when fetching details'.format(arn=role_arn))
-            except Exception:
-                self.current_app.logger.error('Could not gather data from {0}.'.format(role_arn))
+            except Exception as e:
+                self.on_error.send(self, error=e)
+                self.current_app.logger.error('Could not gather data from {0}.'.format(role_arn), exc_info=True)
         return jobs
 
     def _get_job_results(self, iam, jobs):
@@ -154,8 +156,9 @@ class AccountToUpdate(object):
             role_arn = jobs[job_id]
             try:
                 details = self._get_service_last_accessed_details(iam, job_id)
-            except Exception:
-                self.current_app.logger.error('Could not gather data from {0}.'.format(role_arn))
+            except Exception as e:
+                self.on_error.send(self, error=e)
+                self.current_app.logger.error('Could not gather data from {0}.'.format(role_arn), exc_info=True)
                 continue
 
             # Check job status
