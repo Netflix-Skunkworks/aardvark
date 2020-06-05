@@ -1,7 +1,6 @@
 #ensure absolute import for python3
 from __future__ import absolute_import
 
-import json
 import os
 try:
     import queue as Queue # Queue renamed to queue in py3
@@ -11,8 +10,8 @@ import re
 import threading
 
 import better_exceptions # noqa
+from blinker import Signal
 from bunch import Bunch
-from distutils.spawn import find_executable
 from flask import current_app
 from flask_script import Manager, Command, Option
 from swag_client.backend import SWAGManager
@@ -52,6 +51,9 @@ DEFAULT_NUM_THREADS = 5  # testing shows problems with more than 6 threads
 
 class UpdateAccountThread(threading.Thread):
     global ACCOUNT_QUEUE, DB_LOCK, QUEUE_LOCK, UPDATE_DONE
+    on_ready = Signal()
+    on_complete = Signal()
+    on_failure = Signal()
 
     def __init__(self, thread_ID):
         self.thread_ID = thread_ID
@@ -60,6 +62,7 @@ class UpdateAccountThread(threading.Thread):
 
     def run(self):
         while not UPDATE_DONE:
+            self.on_ready.send(self)
 
             QUEUE_LOCK.acquire()
 
@@ -75,6 +78,7 @@ class UpdateAccountThread(threading.Thread):
                 ret_code, aa_data = account.update_account()
 
                 if ret_code != 0:  # retrieve wasn't successful, put back on queue
+                    self.on_failure.send(self)
                     QUEUE_LOCK.acquire()
                     ACCOUNT_QUEUE.put((account_num, role_name, arns))
                     QUEUE_LOCK.release()
@@ -85,6 +89,7 @@ class UpdateAccountThread(threading.Thread):
                 persist_aa_data(self.app, aa_data)
                 DB_LOCK.release()
 
+                self.on_complete.send(self)
                 self.app.logger.info("Thread #{} FINISHED persisting data for account {}".format(self.thread_ID, account_num))
             else:
                 QUEUE_LOCK.release()

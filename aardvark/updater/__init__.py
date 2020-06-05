@@ -4,12 +4,17 @@ from __future__ import absolute_import
 import copy
 import time
 
+from blinker import Signal
 from cloudaux.aws.iam import list_roles, list_users
 from cloudaux.aws.sts import boto3_cached_conn
 from cloudaux.aws.decorators import rate_limited
 
 
 class AccountToUpdate(object):
+    on_ready = Signal()
+    on_complete = Signal()
+    on_failure = Signal()
+
     def __init__(self, current_app, account_number, role_name, arns_list):
         self.current_app = current_app
         self.account_number = account_number
@@ -34,6 +39,7 @@ class AccountToUpdate(object):
 
         :return: Return code and JSON Access Advisor data for given account
         """
+        self.on_ready.send(self)
         arns = self._get_arns()
 
         if not arns:
@@ -44,9 +50,11 @@ class AccountToUpdate(object):
         try:
             details = self._call_access_advisor(client, list(arns))
         except Exception:
+            self.on_failure.send(self)
             self.current_app.logger.exception('Failed to call access advisor')
             return 255, None
         else:
+            self.on_complete.send(self)
             return 0, details
 
     def _get_arns(self):
