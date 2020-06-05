@@ -227,9 +227,9 @@ INFO: Thread #1 FINISHED persisting data for account 123456789012
 ### Available signals
 
 | Class | Signals |
-|-------|-------------|
+|-------|---------|
 | `manage.UpdateAccountThread` | `on_ready`, `on_complete`, `on_failure` |
-| `updater.AccountToUpdate` | `on_ready`, `on_complete`, `on_failure` |
+| `updater.AccountToUpdate` | `on_ready`, `on_complete`, `on_error`, `on_failure` |
 
 ## TODO:
 
