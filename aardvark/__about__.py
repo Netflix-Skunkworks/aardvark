@@ -10,7 +10,7 @@ __uri__ = "https://github.com/Netflix-Skunkworks/aardvark"
 __version__ = "0.4.0"
 
 __author__ = "Patrick Kelley, Travis McPeak, Patrick Sanders"
-__email__ = "psanders@netflix.com"
+__email__ = "aardvark-maintainers@netflix.com"
 
 __license__ = "Apache License, Version 2.0"
 __copyright__ = "Copyright 2020 {0}".format(__author__)
