@@ -177,7 +177,7 @@ We recommend enabling TLS for any service. Instructions for setting up TLS are o
 
 ## Signals
 
-> New in v0.4.0
+> New in v0.3.1
 
 Aardvark uses [Blinker](https://pythonhosted.org/blinker/) for signals in its update process. These signals can be used
 for things like emitting metrics, additional logging, or taking more actions on accounts. You can use them by writing a
