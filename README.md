@@ -175,6 +175,62 @@ The `regex` query is only supported in Postgres (natively) and SQLite (via some 
 ### TLS
 We recommend enabling TLS for any service. Instructions for setting up TLS are out of scope for this document.
 
+## Signals
+
+> New in v0.3.1
+
+Aardvark uses [Blinker](https://pythonhosted.org/blinker/) for signals in its update process. These signals can be used
+for things like emitting metrics, additional logging, or taking more actions on accounts. You can use them by writing a
+script that defines your handlers and calls `aardvark.manage.main()`. For example, create a file called
+`signals_example.py` with the following contents:
+
+```python
+import logging
+
+from aardvark.manage import main
+from aardvark.updater import AccountToUpdate
+
+logger = logging.getLogger('aardvark_signals')
+
+
+@AccountToUpdate.on_ready.connect
+def handle_on_ready(sender):
+    logger.info(f"got on_ready from {sender}")
+
+
+@AccountToUpdate.on_complete.connect
+def handle_on_complete(sender):
+    logger.info(f"got on_complete from {sender}")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+This file can now be invoked in the same way as `manage.py`:
+
+```bash
+python signals_example.py update -a cool_account
+```
+
+The log output will be similar to the following:
+
+```
+INFO: getting bucket swag-bucket
+INFO: Thread #1 updating account 123456789012 with all arns
+INFO: got on_ready from <aardvark.updater.AccountToUpdate object at 0x10c379b50>
+INFO: got on_complete from <aardvark.updater.AccountToUpdate object at 0x10c379b50>
+INFO: Thread #1 persisting data for account 123456789012
+INFO: Thread #1 FINISHED persisting data for account 123456789012
+```
+
+### Available signals
+
+| Class | Signals |
+|-------|---------|
+| `manage.UpdateAccountThread` | `on_ready`, `on_complete`, `on_failure` |
+| `updater.AccountToUpdate` | `on_ready`, `on_complete`, `on_error`, `on_failure` |
+
 ## TODO:
 
 See [TODO](TODO.md)

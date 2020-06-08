@@ -7,10 +7,10 @@ __title__ = "aardvark"
 __summary__ = ("Multi-Account AWS IAM Access Advisor API")
 __uri__ = "https://github.com/Netflix-Skunkworks/aardvark"
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
-__author__ = "Patrick Kelley, Travis McPeak"
-__email__ = "pkelley@netflix.com, tmcpeak@netflix.com"
+__author__ = "Patrick Kelley, Travis McPeak, Patrick Sanders"
+__email__ = "aardvark-maintainers@netflix.com"
 
 __license__ = "Apache License, Version 2.0"
-__copyright__ = "Copyright 2017 {0}".format(__author__)
+__copyright__ = "Copyright 2020 {0}".format(__author__)
