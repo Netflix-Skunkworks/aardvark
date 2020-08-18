@@ -106,4 +106,4 @@ ENV/
 .mypy_cache/
 
 # config
-config.py
+config.ini
