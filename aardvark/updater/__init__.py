@@ -1,7 +1,5 @@
-# ensure absolute import for python3
-from __future__ import absolute_import
-
 import copy
+import logging
 import time
 
 from blinker import Signal
@@ -9,16 +7,19 @@ from cloudaux.aws.iam import list_roles, list_users
 from cloudaux.aws.sts import boto3_cached_conn
 from cloudaux.aws.decorators import rate_limited
 
-from aardvark.models.sqlalchemy import db_session
+from aardvark.plugins import AardvarkPlugin
+
+log = logging.getLogger("aardvark")
 
 
-class AccountToUpdate(object):
+class AccountToUpdate(AardvarkPlugin):
     on_ready = Signal()
     on_complete = Signal()
     on_error = Signal()
     on_failure = Signal()
 
-    def __init__(self, current_app, account_number, role_name, arns_list):
+    def __init__(self, current_app, account_number, role_name, arns_list, alternate_config = None):
+        super().__init__(alternate_config=alternate_config)
         self.current_app = current_app
         self.account_number = account_number
         self.role_name = role_name
@@ -27,8 +28,8 @@ class AccountToUpdate(object):
             "account_number": account_number,
             "assume_role": role_name,
             "session_name": "aardvark",
-            "region": self.current_app.config.get("REGION") or "us-east-1",
-            "arn_partition": self.current_app.config.get("ARN_PARTITION") or "aws",
+            "region": self.config["aws"]["region"].get() or "us-east-1",
+            "arn_partition": self.config["aws"]["arn_partition"].get() or "aws",
         }
         self.max_access_advisor_job_wait = (
             5 * 60
@@ -48,7 +49,7 @@ class AccountToUpdate(object):
         arns = self._get_arns()
 
         if not arns:
-            self.current_app.logger.warn("Zero ARNs collected. Exiting")
+            log.warning("Zero ARNs collected. Exiting")
             exit(-1)
 
         client = self._get_client()
@@ -56,7 +57,7 @@ class AccountToUpdate(object):
             details = self._call_access_advisor(client, list(arns))
         except Exception as e:
             self.on_failure.send(self, error=e)
-            self.current_app.logger.exception(
+            log.exception(
                 "Failed to call access advisor", exc_info=True
             )
             return 255, None
@@ -94,7 +95,7 @@ class AccountToUpdate(object):
                 return account_arns
 
             if arn not in account_arns:
-                self.current_app.logger.warn(
+                log.warning(
                     "Provided ARN {arn} not found in account.".format(arn=arn)
                 )
                 continue
@@ -137,12 +138,12 @@ class AccountToUpdate(object):
                 jobs[job_id] = role_arn
             except iam.exceptions.NoSuchEntityException:
                 """ We're here because this ARN disappeared since the call to self._get_arns(). Log the missing ARN and move along.  """
-                self.current_app.logger.info(
+                log.info(
                     "ARN {arn} found gone when fetching details".format(arn=role_arn)
                 )
             except Exception as e:
                 self.on_error.send(self, error=e)
-                self.current_app.logger.error(
+                log.error(
                     "Could not gather data from {0}.".format(role_arn), exc_info=True
                 )
         return jobs
@@ -168,7 +169,7 @@ class AccountToUpdate(object):
                 details = self._get_service_last_accessed_details(iam, job_id)
             except Exception as e:
                 self.on_error.send(self, error=e)
-                self.current_app.logger.error(
+                log.error(
                     "Could not gather data from {0}.".format(role_arn), exc_info=True
                 )
                 continue
@@ -188,11 +189,11 @@ class AccountToUpdate(object):
                     job_id=job_id, status=details["JobStatus"], arn=role_arn
                 )
 
-                failing_arns = self.current_app.config.get("FAILING_ARNS", {})
+                failing_arns = set(self.config["updater"]["failing_arns"].get())
                 if role_arn in failing_arns:
-                    self.current_app.logger.info(log_str)
+                    log.info(log_str)
                 else:
-                    self.current_app.logger.error(log_str)
+                    log.error(log_str)
 
                 continue
 
@@ -221,41 +222,8 @@ class AccountToUpdate(object):
     def _log_unfinished_jobs(self, job_queue, job_details):
         for job_id in job_queue:
             role_arn = job_details[job_id]
-            self.current_app.logger.error(
+            log.error(
                 "Job {job_id} for ARN {arn} didn't finish".format(
                     job_id=job_id, arn=role_arn,
                 )
             )
-
-
-def persist_aa_data(app, aa_data):
-    """
-    Reads access advisor JSON file & persists to our database
-    """
-    from aardvark.models.sqlalchemy.advisor_data import AdvisorData
-    from aardvark.models.sqlalchemy.aws_iam_object import AWSIAMObject
-
-    with db_session as session:
-        if not aa_data:
-            app.logger.warn(
-                "Cannot persist Access Advisor Data as no data was collected."
-            )
-            return
-
-        arn_cache = {}
-        for arn, data in aa_data.items():
-            if arn in arn_cache:
-                item = arn_cache[arn]
-            else:
-                item = AWSIAMObject.get_or_create(arn, session=session)
-                arn_cache[arn] = item
-            for service in data:
-                AdvisorData.create_or_update(
-                    item.id,
-                    service["LastAuthenticated"],
-                    service["ServiceName"],
-                    service["ServiceNamespace"],
-                    service.get("LastAuthenticatedEntity"),
-                    service["TotalAuthenticatedEntities"],
-                    session=session,
-                )

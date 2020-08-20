@@ -1,11 +1,11 @@
-import configparser
+import confuse
 
-from aardvark.config import AARDVARK_CONFIG
+from aardvark.configuration import CONFIG
 
 
 class AardvarkPlugin:
-    def __init__(self, alternate_config: configparser.SectionProxy = None):
+    def __init__(self, alternate_config: confuse.Configuration = None):
         if alternate_config:
             self.config = alternate_config
         else:
-            self.config = AARDVARK_CONFIG
+            self.config = CONFIG

@@ -25,33 +25,29 @@ with open(os.path.join(ROOT, "aardvark", "__about__.py")) as f:
 
 
 install_requires = [
-    'requests>=2.9.1',
-    'better_exceptions==0.1.7',
-    'blinker>=1.4',
-    'Bunch==1.0.1',
-    'Flask-SQLAlchemy==2.2',
-    'cloudaux>=1.2.0',
-    'Flask==1.0.2',
-    'Flask-RESTful==0.3.5',
-    'Flask-Script==2.0.5',
-    'flasgger==0.6.3',
-    'gunicorn==19.7.1',
-    'psycopg2~=2.7.4',
-    'pytz==2017.2',
-    'swag-client==0.4.6',
-    'tqdm==4.40.0',
-    'deepdiff==3.3.0'  # Pinning to last py2 compatible version. Needed for swag-client.
+    "requests>=2.9.1",
+    "better_exceptions==0.1.7",
+    "blinker>=1.4",
+    "Bunch==1.0.1",
+    "Flask-SQLAlchemy==2.2",
+    "cloudaux>=1.2.0",
+    "Flask==1.0.2",
+    "Flask-RESTful==0.3.5",
+    "Flask-Script==2.0.5",
+    "flasgger==0.6.3",
+    "gunicorn==19.7.1",
+    "psycopg2-binary~=2.7.7",
+    "pytz==2017.2",
+    "swag-client==0.4.6",
+    "tqdm==4.40.0",
+    "deepdiff==3.3.0",  # Pinning to last py2 compatible version. Needed for swag-client.
 ]
 
-tests_require = [
-    'pexpect>=4.2.1'
-]
+tests_require = ["pexpect>=4.2.1"]
 
-docs_require = [
-]
+docs_require = []
 
-dev_requires = [
-]
+dev_requires = []
 
 
 setup(
@@ -61,20 +57,12 @@ setup(
     author_email=about["__email__"],
     url=about["__uri__"],
     description=about["__summary__"],
-    long_description=open(os.path.join(ROOT, 'README.md')).read(),
+    long_description=open(os.path.join(ROOT, "README.md")).read(),
     long_description_content_type="text/markdown",
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
     install_requires=install_requires,
-    extras_require={
-        'tests': tests_require,
-        'docs': docs_require,
-        'dev': dev_requires,
-    },
-    entry_points={
-        'console_scripts': [
-            'aardvark = aardvark.manage:main',
-        ],
-    }
+    extras_require={"tests": tests_require, "docs": docs_require, "dev": dev_requires,},
+    entry_points={"console_scripts": ["aardvark = aardvark.manage:main",],},
 )
