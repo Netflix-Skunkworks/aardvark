@@ -18,8 +18,8 @@ class AccountToUpdate(AardvarkPlugin):
     on_error = Signal()
     on_failure = Signal()
 
-    def __init__(self, current_app, account_number, role_name, arns_list, alternate_config = None):
-        super().__init__(alternate_config=alternate_config)
+    def __init__(self, current_app, account_number, role_name, arns_list, alternative_config = None):
+        super().__init__(alternative_config=alternative_config)
         self.current_app = current_app
         self.account_number = account_number
         self.role_name = role_name

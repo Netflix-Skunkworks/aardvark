@@ -3,6 +3,7 @@ import logging
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
+import confuse
 from sqlalchemy import create_engine, engine
 from sqlalchemy import func as sa_func
 from sqlalchemy.exc import SQLAlchemyError
@@ -11,14 +12,18 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from aardvark.exceptions import DatabaseException, CombineException
 from aardvark.persistence import PersistencePlugin
 from aardvark.persistence.sqlalchemy.models import AdvisorData, AWSIAMObject, Base
-from aardvark.utils import Singleton
 
 log = logging.getLogger("aardvark")
 
 
-class SQLAlchemyPersistence(PersistencePlugin, metaclass=Singleton):
+class SQLAlchemyPersistence(PersistencePlugin):
     sa_engine: engine = None
     db_session: scoped_session = None
+
+    def __init__(self, alternative_config: confuse.Configuration = None, initialize: bool = True):
+        super().__init__(alternative_config=alternative_config)
+        if initialize:
+            self.init_db()
 
     def init_db(self):
         self.sa_engine = create_engine(self.config["sqlalchemy"]["database_uri"].get())
@@ -36,16 +41,15 @@ class SQLAlchemyPersistence(PersistencePlugin, metaclass=Singleton):
 
     def teardown_db(self):
         Base.metadata.drop_all(bind=self.sa_engine)
+        self.remove()
 
     def remove(self):
         self.db_session.remove()
 
     def create_iam_object(self, arn, lastUpdated):
-        with self.db_session() as session:
+        with self.session_scope() as session:
             item = AWSIAMObject(arn=arn, lastUpdated=lastUpdated)
             session.add(item)
-            session.commit()
-            session.refresh(item)
         return item
 
     @contextmanager
@@ -86,9 +90,15 @@ class SQLAlchemyPersistence(PersistencePlugin, metaclass=Singleton):
 
         for namespace, service in usage.items():
             last_authenticated = service["lastAuthenticated"]
-            dt_last_authenticated = datetime.datetime.fromtimestamp(
-                last_authenticated / 1e3
-            )
+            if isinstance(last_authenticated, int):
+                dt_last_authenticated = datetime.datetime.fromtimestamp(
+                    last_authenticated / 1e3
+                )
+            elif isinstance(last_authenticated, str):
+                dt_last_authenticated = datetime.datetime.strptime(last_authenticated, '%Y-%m-%d %H:%M:%S.%f')
+            else:
+                dt_last_authenticated = last_authenticated
+
             dt_starting = datetime.datetime.utcnow() - datetime.timedelta(days=90)
             usage[namespace]["USED_LAST_90_DAYS"] = dt_last_authenticated > dt_starting
 
@@ -224,11 +234,17 @@ class SQLAlchemyPersistence(PersistencePlugin, metaclass=Singleton):
             session.add(item)
             return
 
-        if lastAuthenticated > item.lastAuthenticated:
+        # sqlite will return a string for item.lastAuthenticated, so we parse that into a datetime
+        if isinstance(item.lastAuthenticated, str):
+            ts = datetime.datetime.strptime(item.lastAuthenticated, '%Y-%m-%d %H:%M:%S.%f')
+        else:
+            ts = item.lastAuthenticated
+
+        if lastAuthenticated > ts:
             item.lastAuthenticated = lastAuthenticated
             session.add(item)
 
-        elif lastAuthenticated < item.lastAuthenticated:
+        elif lastAuthenticated < ts:
             """
             lastAuthenticated is obtained by calling get_service_last_accessed_details() method of the boto3 iam client.
             When there is no AA data about a service, the lastAuthenticated key is missing from the returned dictionary.

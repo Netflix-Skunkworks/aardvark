@@ -1,11 +1,13 @@
 from typing import Any, Dict, List, Optional
 
+import confuse
+
 from aardvark.plugins import AardvarkPlugin
 
 
 class PersistencePlugin(AardvarkPlugin):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, alternative_config: confuse.Configuration = None):
+        super().__init__(alternative_config=alternative_config)
 
     def init_db(self):
         raise NotImplementedError()

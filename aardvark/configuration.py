@@ -14,7 +14,6 @@ def create_config(
     sqlalchemy_database_uri: str = "",
     sqlalchemy_track_modifications: bool = False,
     num_threads: int = 5,
-    no_prompt: bool = False,
     region: str = "",
     filename: str = "generated.yaml",
 ):
