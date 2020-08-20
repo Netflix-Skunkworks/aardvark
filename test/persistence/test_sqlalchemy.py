@@ -1,7 +1,6 @@
 import confuse
 import datetime
 import pytest
-import tempfile
 
 from sqlalchemy.exc import OperationalError
 
@@ -9,7 +8,6 @@ from aardvark.plugins import AardvarkPlugin
 from aardvark.persistence import PersistencePlugin
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 
-TEMP_DIR = tempfile.TemporaryDirectory()
 TEST_CONFIG = confuse.Configuration("aardvark_test", __name__)
 TIMESTAMP = datetime.datetime.now()
 ADVISOR_DATA = {
