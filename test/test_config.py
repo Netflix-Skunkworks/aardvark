@@ -1,6 +1,7 @@
+import yaml
+
 import confuse
 import pytest
-import yaml
 
 import aardvark.configuration
 from aardvark.configuration import create_config
@@ -45,4 +46,4 @@ def test_create_config(temp_config_file):
     assert file_data["swag"]["service_enabled_requirement"] == "service"
     assert file_data["updater"]["num_threads"] == 99
     assert file_data["sqlalchemy"]["database_uri"] == "sqlite://////////////hi.db"
-    assert file_data["sqlalchemy"]["track_modifications"] == True
+    assert file_data["sqlalchemy"]["track_modifications"]

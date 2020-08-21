@@ -5,14 +5,14 @@ with a support for regular expression operators in Postgres and SQLite.
 
 # courtesy of Xion: http://xion.io/post/code/sqlalchemy-regex-filters.html
 import re
+import sqlite3
 
-from sqlalchemy import String as _String, event, exc
+from sqlalchemy import String as _String
+from sqlalchemy import event, exc
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import BinaryExpression, func, literal
 from sqlalchemy.sql.operators import custom_op
-import sqlite3
-
 
 __all__ = ["String"]
 

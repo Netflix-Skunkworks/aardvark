@@ -7,11 +7,10 @@ Multi-Account AWS IAM Access Advisor API
 """
 from __future__ import absolute_import
 
-import sys
 import os.path
+import sys
 
-from setuptools import setup, find_packages
-
+from setuptools import find_packages, setup
 
 ROOT = os.path.realpath(os.path.join(os.path.dirname(__file__)))
 
@@ -56,6 +55,6 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=install_requires,
-    extras_require={"tests": tests_require, "docs": docs_require, "dev": dev_requires,},
-    entry_points={"console_scripts": ["aardvark = aardvark.manage:main",],},
+    extras_require={"tests": tests_require, "docs": docs_require, "dev": dev_requires},
+    entry_points={"console_scripts": ["aardvark = aardvark.manage:main"]},
 )

@@ -1,4 +1,5 @@
 import configparser
+
 import confuse
 
 CONFIG: confuse.Configuration = confuse.Configuration("aardvark", __name__)

@@ -1,16 +1,14 @@
 # ensure absolute import for python3
 from __future__ import absolute_import
 
-import os.path
 import logging
-import sys
+import os.path
 from logging.config import dictConfig
 
-from flask import Flask
 from flasgger import Swagger
+from flask import Flask
 
 from aardvark.configuration import CONFIG
-from aardvark.persistence import PersistencePlugin
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 from aardvark.view import advisor_bp
 

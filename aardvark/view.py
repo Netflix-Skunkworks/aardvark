@@ -1,11 +1,7 @@
 # ensure absolute import for python3
 from __future__ import absolute_import
 
-import better_exceptions  # noqa
-
-from flask import abort, jsonify, request
-from flask import Blueprint
-from flask import request
+from flask import Blueprint, abort, jsonify, request
 
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 

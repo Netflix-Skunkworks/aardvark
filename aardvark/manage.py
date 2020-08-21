@@ -1,15 +1,14 @@
+import logging
 import os
 import queue
-import logging
 import re
 import threading
 from typing import Dict, List
 
-import better_exceptions  # noqa
 from blinker import Signal
 from bunch import Bunch
 from flask import current_app
-from flask_script import Manager, Command, Option
+from flask_script import Command, Manager, Option
 from swag_client.backend import SWAGManager
 from swag_client.exceptions import InvalidSWAGDataException
 
@@ -143,7 +142,6 @@ def config(
 
         # If a swag bucket was specified we set write_swag here so it gets
         # written out to the config file below.
-        write_swag = bool(bucket_param)
         bucket = bucket_param or DEFAULT_SWAG_BUCKET
 
     else:
@@ -151,7 +149,6 @@ def config(
         # structure as the additional parameters below.
         if bucket_param:
             bucket = bucket_param
-            write_swag = True
         else:
             print(
                 "\nAardvark can use SWAG to look up accounts. See {repo_url}".format(
@@ -164,10 +161,8 @@ def config(
                     default=DEFAULT_SWAG_BUCKET
                 )
                 bucket = input(bucket_prompt) or DEFAULT_SWAG_BUCKET
-                write_swag = True
             else:
                 bucket = ""
-                write_swag = False
 
         aardvark_role_prompt = "ROLENAME [{default}]: ".format(
             default=DEFAULT_AARDVARK_ROLE
@@ -185,40 +180,6 @@ def config(
             num_threads_param or input(num_threads_prompt) or DEFAULT_NUM_THREADS
         )
 
-    log = """LOG_CFG = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'standard': {
-            'format': '%(asctime)s %(levelname)s: %(message)s '
-                '[in %(pathname)s:%(lineno)d]'
-        }
-    },
-    'handlers': {
-        'file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'level': 'DEBUG',
-            'formatter': 'standard',
-            'filename': 'aardvark.log',
-            'maxBytes': 10485760,
-            'backupCount': 100,
-            'encoding': 'utf8'
-        },
-        'console': {
-            'class': 'logging.StreamHandler',
-            'level': 'DEBUG',
-            'formatter': 'standard',
-            'stream': 'ext://sys.stdout'
-        }
-    },
-    'loggers': {
-        'aardvark': {
-            'handlers': ['file', 'console'],
-            'level': 'DEBUG'
-        }
-    }
-}"""
-
     create_config(
         aardvark_role=aardvark_role,
         swag_bucket=bucket or "",
@@ -227,7 +188,6 @@ def config(
         sqlalchemy_database_uri=db_uri,
         sqlalchemy_track_modifications=False,
         num_threads=num_threads,
-        no_prompt=False,
         region="us-east-1",
     )
 

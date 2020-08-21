@@ -15,9 +15,6 @@ class PersistencePlugin(AardvarkPlugin):
     def teardown_db(self):
         raise NotImplementedError()
 
-    def remove(self):
-        raise NotImplementedError()
-
     def get_role_data(
         self,
         page: int = 0,

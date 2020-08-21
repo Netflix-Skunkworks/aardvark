@@ -9,9 +9,10 @@ from sqlalchemy import func as sa_func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-from aardvark.exceptions import DatabaseException, CombineException
+from aardvark.exceptions import CombineException, DatabaseException
 from aardvark.persistence import PersistencePlugin
-from aardvark.persistence.sqlalchemy.models import AdvisorData, AWSIAMObject, Base
+from aardvark.persistence.sqlalchemy.models import (AdvisorData, AWSIAMObject,
+                                                    Base)
 
 log = logging.getLogger("aardvark")
 
@@ -55,7 +56,6 @@ class SQLAlchemyPersistence(PersistencePlugin):
     @contextmanager
     def session_scope(self):
         """Provide a transactional scope around a series of operations."""
-        session = self._create_session()
         session = self._create_session()
         try:
             yield session
@@ -209,8 +209,9 @@ class SQLAlchemyPersistence(PersistencePlugin):
         serviceNamespace,
         lastAuthenticatedEntity,
         totalAuthenticatedEntities,
-        session,
+        session=None,
     ):
+        session = session or self._create_session()
         serviceName = serviceName[:128]
         serviceNamespace = serviceNamespace[:64]
         item = None

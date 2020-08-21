@@ -3,9 +3,9 @@ import logging
 import time
 
 from blinker import Signal
+from cloudaux.aws.decorators import rate_limited
 from cloudaux.aws.iam import list_roles, list_users
 from cloudaux.aws.sts import boto3_cached_conn
-from cloudaux.aws.decorators import rate_limited
 
 from aardvark.plugins import AardvarkPlugin
 

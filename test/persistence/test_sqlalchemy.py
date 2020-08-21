@@ -1,12 +1,12 @@
-import confuse
 import datetime
-import pytest
 
+import confuse
+import pytest
 from sqlalchemy.exc import OperationalError
 
-from aardvark.plugins import AardvarkPlugin
 from aardvark.persistence import PersistencePlugin
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
+from aardvark.plugins import AardvarkPlugin
 
 TEST_CONFIG = confuse.Configuration("aardvark_test", __name__)
 TIMESTAMP = datetime.datetime.now()
@@ -34,7 +34,7 @@ ADVISOR_DATA = {
 
 @pytest.fixture(scope="function")
 def temp_sqlite_db_config():
-    db_uri = f"sqlite:///:memory:"
+    db_uri = "sqlite:///:memory:"
     custom_config = confuse.Configuration("aardvark_test", __name__, read=False)
     custom_config["sqlalchemy"]["database_uri"] = db_uri
     return custom_config
@@ -66,7 +66,8 @@ def test_init_db(temp_sqlite_db_config):
     sap.init_db()
     assert sap.sa_engine
     assert sap.session_factory
-    from aardvark.persistence.sqlalchemy.models import AdvisorData, AWSIAMObject
+    from aardvark.persistence.sqlalchemy.models import (AdvisorData,
+                                                        AWSIAMObject)
 
     with sap.session_scope() as session:
         session.query(AdvisorData).all()
@@ -79,7 +80,8 @@ def test_teardown_db(temp_sqlite_db_config):
     )
     sap.init_db()
     sap.teardown_db()
-    from aardvark.persistence.sqlalchemy.models import AdvisorData, AWSIAMObject
+    from aardvark.persistence.sqlalchemy.models import (AdvisorData,
+                                                        AWSIAMObject)
 
     with sap.session_scope() as session:
         with pytest.raises(OperationalError):
