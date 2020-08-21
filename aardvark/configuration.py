@@ -2,7 +2,6 @@ import configparser
 import confuse
 
 CONFIG: confuse.Configuration = confuse.Configuration("aardvark", __name__)
-print(f"configuration directory is {CONFIG.config_dir()}")
 
 
 def create_config(
@@ -19,24 +18,24 @@ def create_config(
 ):
     if aardvark_role:
         CONFIG["aws"]["rolename"] = aardvark_role
-    if swag_bucket:
-        CONFIG["bucket"]["swag_bucket"] = swag_bucket
-    if swag_filter:
-        CONFIG["filter"]["swag_filter"] = swag_filter
-    if swag_service_enabled_requirement:
-        CONFIG["service_enabled_requirement"][
-            "swag_service_enabled_requirement"
-        ] = swag_service_enabled_requirement
-    if sqlalchemy_database_uri:
-        CONFIG["sqlalchemy"]["sqlalchemy_database_uri"] = sqlalchemy_database_uri
-    if sqlalchemy_track_modifications:
-        CONFIG["sqlalchemy"]["sqlalchemy_track_modifications"] = sqlalchemy_track_modifications
-    if num_threads:
-        CONFIG["updater"]["num_threads"] = num_threads
     if arn_partition:
         CONFIG["aws"]["arn_partition"] = arn_partition
     if region:
         CONFIG["aws"]["region"] = region
+    if swag_bucket:
+        CONFIG["swag"]["bucket"] = swag_bucket
+    if swag_filter:
+        CONFIG["swag"]["filter"] = swag_filter
+    if swag_service_enabled_requirement:
+        CONFIG["swag"][
+            "service_enabled_requirement"
+        ] = swag_service_enabled_requirement
+    if sqlalchemy_database_uri:
+        CONFIG["sqlalchemy"]["database_uri"] = sqlalchemy_database_uri
+    if sqlalchemy_track_modifications:
+        CONFIG["sqlalchemy"]["track_modifications"] = sqlalchemy_track_modifications
+    if num_threads:
+        CONFIG["updater"]["num_threads"] = num_threads
     with open(filename, "w") as f:
         f.write(CONFIG.dump(full=False))
 
