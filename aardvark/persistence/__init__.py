@@ -31,19 +31,3 @@ class PersistencePlugin(AardvarkPlugin):
 
     def _combine_results(self, access_advisor_data: Dict[str, Any]) -> Dict[str, Any]:
         raise NotImplementedError()
-
-    # @staticmethod
-    # def update(*args, **kwargs):
-    #     raise NotImplementedError()
-    #
-    # @staticmethod
-    # def delete(*args, **kwargs):
-    #     raise NotImplementedError()
-    #
-    # @staticmethod
-    # def get_or_create(*args, **kwargs):
-    #     raise NotImplementedError()
-    #
-    # @staticmethod
-    # def create_or_update(*args, **kwargs):
-    #     raise NotImplementedError()
