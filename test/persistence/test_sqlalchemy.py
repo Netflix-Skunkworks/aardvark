@@ -33,9 +33,8 @@ ADVISOR_DATA = {
 
 
 @pytest.fixture(scope="function")
-def temp_sqlite_db_config(tmpdir_factory):
-    db_path = tmpdir_factory.mktemp("aardvark").join("aardvark.db")
-    db_uri = f"sqlite:///{db_path}"
+def temp_sqlite_db_config():
+    db_uri = f"sqlite:///:memory:"
     custom_config = confuse.Configuration("aardvark_test", __name__, read=False)
     custom_config["sqlalchemy"]["database_uri"] = db_uri
     return custom_config
@@ -61,21 +60,27 @@ def test_sqlalchemypersistence_custom_config():
 
 
 def test_init_db(temp_sqlite_db_config):
-    sap = SQLAlchemyPersistence(alternative_config=temp_sqlite_db_config, initialize=False)
+    sap = SQLAlchemyPersistence(
+        alternative_config=temp_sqlite_db_config, initialize=False
+    )
     sap.init_db()
     assert sap.sa_engine
-    assert sap.db_session
+    assert sap.session_factory
     from aardvark.persistence.sqlalchemy.models import AdvisorData, AWSIAMObject
+
     with sap.session_scope() as session:
         session.query(AdvisorData).all()
         session.query(AWSIAMObject).all()
 
 
 def test_teardown_db(temp_sqlite_db_config):
-    sap = SQLAlchemyPersistence(alternative_config=temp_sqlite_db_config, initialize=False)
+    sap = SQLAlchemyPersistence(
+        alternative_config=temp_sqlite_db_config, initialize=False
+    )
     sap.init_db()
     sap.teardown_db()
     from aardvark.persistence.sqlalchemy.models import AdvisorData, AWSIAMObject
+
     with sap.session_scope() as session:
         with pytest.raises(OperationalError):
             session.query(AdvisorData).all()
@@ -84,7 +89,9 @@ def test_teardown_db(temp_sqlite_db_config):
 
 def test_create_iam_object(temp_sqlite_db_config):
     sap = SQLAlchemyPersistence(alternative_config=temp_sqlite_db_config)
-    iam_object = sap.create_iam_object("arn:aws:iam::123456789012:role/SpongebobSquarepants", datetime.datetime.now())
+    iam_object = sap.create_iam_object(
+        "arn:aws:iam::123456789012:role/SpongebobSquarepants", datetime.datetime.now()
+    )
     assert iam_object.id
     assert iam_object.arn == "arn:aws:iam::123456789012:role/SpongebobSquarepants"
 
@@ -103,7 +110,7 @@ def test_create_or_update_advisor_data(temp_sqlite_db_config):
             "adv",
             "arn:aws:iam::123456789012:role/PatrickStar",
             999,
-            session=session
+            session=session,
         )
 
     # Update advisor data record with new timestamp
@@ -115,7 +122,7 @@ def test_create_or_update_advisor_data(temp_sqlite_db_config):
             "adv",
             "arn:aws:iam::123456789012:role/PatrickStar",
             999,
-            session=session
+            session=session,
         )
 
 
@@ -123,14 +130,18 @@ def test_get_or_create_iam_object(temp_sqlite_db_config):
     sap = SQLAlchemyPersistence(alternative_config=temp_sqlite_db_config)
 
     # create a new IAM object
-    new_object = sap.get_or_create_iam_object("arn:aws:iam::123456789012:role/SquidwardTentacles")
+    new_object = sap.get_or_create_iam_object(
+        "arn:aws:iam::123456789012:role/SquidwardTentacles"
+    )
     assert new_object.id
     assert new_object.arn == "arn:aws:iam::123456789012:role/SquidwardTentacles"
     object_id = new_object.id
     object_arn = new_object.arn
 
     # make the same call and make sure we get the same entry we created before
-    retrieved_object = sap.get_or_create_iam_object("arn:aws:iam::123456789012:role/SquidwardTentacles")
+    retrieved_object = sap.get_or_create_iam_object(
+        "arn:aws:iam::123456789012:role/SquidwardTentacles"
+    )
     assert retrieved_object.id
     assert retrieved_object.arn == "arn:aws:iam::123456789012:role/SquidwardTentacles"
     assert retrieved_object.id == object_id

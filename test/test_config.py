@@ -15,7 +15,9 @@ def temp_config_file(tmpdir_factory):
 @pytest.fixture(scope="function", autouse=True)
 def mock_config(monkeypatch):
     # Monkeypatch the actual config object so we don't poison it for future tests
-    monkeypatch.setattr(aardvark.configuration, "CONFIG", confuse.Configuration("aardvark"))
+    monkeypatch.setattr(
+        aardvark.configuration, "CONFIG", confuse.Configuration("aardvark")
+    )
 
 
 def test_create_config(temp_config_file):

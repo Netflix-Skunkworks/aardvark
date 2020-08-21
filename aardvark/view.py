@@ -10,6 +10,12 @@ from flask import request
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 
 advisor_bp = Blueprint("advisor", __name__)
+session = SQLAlchemyPersistence()._create_session()
+
+
+@advisor_bp.teardown_request
+def shutdown_session(exception=None):
+    session.remove()
 
 
 # undocumented convenience pass-through so we can query directly from browser
@@ -112,7 +118,13 @@ def post():
         raise abort(400, str(e))
 
     values = SQLAlchemyPersistence().get_role_data(
-        page=page, count=count, combine=combine, phrase=phrase, arns=arns, regex=regex,
+        page=page,
+        count=count,
+        combine=combine,
+        phrase=phrase,
+        arns=arns,
+        regex=regex,
+        session=session,
     )
 
     return jsonify(values)

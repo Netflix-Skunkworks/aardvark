@@ -18,33 +18,33 @@ log = logging.getLogger("aardvark")
 
 class SQLAlchemyPersistence(PersistencePlugin):
     sa_engine: engine = None
-    db_session: scoped_session = None
+    session_factory: sessionmaker = None
 
-    def __init__(self, alternative_config: confuse.Configuration = None, initialize: bool = True):
+    def __init__(
+        self, alternative_config: confuse.Configuration = None, initialize: bool = True
+    ):
         super().__init__(alternative_config=alternative_config)
         if initialize:
             self.init_db()
 
     def init_db(self):
         self.sa_engine = create_engine(self.config["sqlalchemy"]["database_uri"].get())
-        self.db_session = scoped_session(
-            sessionmaker(
-                autocommit=False,
-                autoflush=False,
-                bind=self.sa_engine,
-                expire_on_commit=False,
-            )
+        self.session_factory = sessionmaker(
+            autocommit=False,
+            autoflush=False,
+            bind=self.sa_engine,
+            expire_on_commit=False,
         )
-        Base.query = self.db_session.query_property()
+        session = self._create_session()
+        Base.query = session.query_property()
 
         Base.metadata.create_all(bind=self.sa_engine)
 
+    def _create_session(self):
+        return scoped_session(self.session_factory)
+
     def teardown_db(self):
         Base.metadata.drop_all(bind=self.sa_engine)
-        self.remove()
-
-    def remove(self):
-        self.db_session.remove()
 
     def create_iam_object(self, arn, lastUpdated):
         with self.session_scope() as session:
@@ -55,7 +55,8 @@ class SQLAlchemyPersistence(PersistencePlugin):
     @contextmanager
     def session_scope(self):
         """Provide a transactional scope around a series of operations."""
-        session = self.db_session()
+        session = self._create_session()
+        session = self._create_session()
         try:
             yield session
             log.debug("committing SQLAlchemy DB session")
@@ -95,7 +96,9 @@ class SQLAlchemyPersistence(PersistencePlugin):
                     last_authenticated / 1e3
                 )
             elif isinstance(last_authenticated, str):
-                dt_last_authenticated = datetime.datetime.strptime(last_authenticated, '%Y-%m-%d %H:%M:%S.%f')
+                dt_last_authenticated = datetime.datetime.strptime(
+                    last_authenticated, "%Y-%m-%d %H:%M:%S.%f"
+                )
             else:
                 dt_last_authenticated = last_authenticated
 
@@ -138,11 +141,13 @@ class SQLAlchemyPersistence(PersistencePlugin):
         phrase: str = "",
         arns: Optional[List[str]] = None,
         regex: str = "",
+        session=None,
     ) -> Dict[str, Any]:
         offset = (page - 1) * count if page else 0
         limit = count
+        session = session or self._create_session()
         # default unfiltered query
-        query = AWSIAMObject.query
+        query = session.query(AWSIAMObject)
 
         try:
             if phrase:
@@ -169,7 +174,7 @@ class SQLAlchemyPersistence(PersistencePlugin):
             raise DatabaseException("Could not retrieve roles from database: %s", e)
 
         if not items:
-            items = AWSIAMObject.query.offset(offset).limit(limit).all()
+            items = session.query(AWSIAMObject).offset(offset).limit(limit).all()
 
         values = dict(page=page, total=total, count=len(items))
         for item in items:
@@ -204,14 +209,15 @@ class SQLAlchemyPersistence(PersistencePlugin):
         serviceNamespace,
         lastAuthenticatedEntity,
         totalAuthenticatedEntities,
-        session=None,
+        session,
     ):
         serviceName = serviceName[:128]
         serviceNamespace = serviceNamespace[:64]
         item = None
         try:
             item = (
-                AdvisorData.query.filter(AdvisorData.item_id == item_id)
+                session.query(AdvisorData)
+                .filter(AdvisorData.item_id == item_id)
                 .filter(AdvisorData.serviceNamespace == serviceNamespace)
                 .scalar()
             )
@@ -236,7 +242,9 @@ class SQLAlchemyPersistence(PersistencePlugin):
 
         # sqlite will return a string for item.lastAuthenticated, so we parse that into a datetime
         if isinstance(item.lastAuthenticated, str):
-            ts = datetime.datetime.strptime(item.lastAuthenticated, '%Y-%m-%d %H:%M:%S.%f')
+            ts = datetime.datetime.strptime(
+                item.lastAuthenticated, "%Y-%m-%d %H:%M:%S.%f"
+            )
         else:
             ts = item.lastAuthenticated
 

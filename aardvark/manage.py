@@ -286,13 +286,13 @@ def _prep_accounts(account_names):
 
     try:
         swag_opts = CONFIG["swag"]["opts"].get()
-        swag = SWAGManager(
-            **swag_opts
-        )
+        swag = SWAGManager(**swag_opts)
 
         all_accounts: List[Dict] = swag.get_all(CONFIG["swag"]["filter"].get())
 
-        service_enabled_requirement = CONFIG["swag"]["service_enabled_requirement"].get()
+        service_enabled_requirement = CONFIG["swag"][
+            "service_enabled_requirement"
+        ].get()
         if service_enabled_requirement:
             all_accounts = swag.get_service_enabled(
                 service_enabled_requirement, accounts_list=all_accounts

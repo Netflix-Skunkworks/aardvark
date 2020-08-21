@@ -27,13 +27,6 @@ def create_app(test_config=None):
     app = Flask(__name__, static_url_path="/static")
     Swagger(app)
 
-    path = _find_config()
-    if not path:
-        print("No config")
-        app.config.from_pyfile("_config.py")
-    else:
-        app.config.from_pyfile("_config.py")
-
     if test_config is not None:
         app.config.update(test_config)
 
@@ -48,10 +41,6 @@ def create_app(test_config=None):
             description: service is up
         """
         return "ok"
-
-    @app.teardown_appcontext
-    def shutdown_session(exception=None):
-        persistence.remove()
 
     # Blueprints
     for bp in BLUEPRINTS:

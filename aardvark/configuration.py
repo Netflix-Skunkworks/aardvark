@@ -27,9 +27,7 @@ def create_config(
     if swag_filter:
         CONFIG["swag"]["filter"] = swag_filter
     if swag_service_enabled_requirement:
-        CONFIG["swag"][
-            "service_enabled_requirement"
-        ] = swag_service_enabled_requirement
+        CONFIG["swag"]["service_enabled_requirement"] = swag_service_enabled_requirement
     if sqlalchemy_database_uri:
         CONFIG["sqlalchemy"]["database_uri"] = sqlalchemy_database_uri
     if sqlalchemy_track_modifications:

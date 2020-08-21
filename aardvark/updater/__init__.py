@@ -18,7 +18,9 @@ class AccountToUpdate(AardvarkPlugin):
     on_error = Signal()
     on_failure = Signal()
 
-    def __init__(self, current_app, account_number, role_name, arns_list, alternative_config = None):
+    def __init__(
+        self, current_app, account_number, role_name, arns_list, alternative_config=None
+    ):
         super().__init__(alternative_config=alternative_config)
         self.current_app = current_app
         self.account_number = account_number
@@ -57,9 +59,7 @@ class AccountToUpdate(AardvarkPlugin):
             details = self._call_access_advisor(client, list(arns))
         except Exception as e:
             self.on_failure.send(self, error=e)
-            log.exception(
-                "Failed to call access advisor", exc_info=True
-            )
+            log.exception("Failed to call access advisor", exc_info=True)
             return 255, None
         else:
             self.on_complete.send(self)
@@ -95,9 +95,7 @@ class AccountToUpdate(AardvarkPlugin):
                 return account_arns
 
             if arn not in account_arns:
-                log.warning(
-                    "Provided ARN {arn} not found in account.".format(arn=arn)
-                )
+                log.warning("Provided ARN {arn} not found in account.".format(arn=arn))
                 continue
 
             result_arns.add(arn)
