@@ -66,8 +66,7 @@ def test_init_db(temp_sqlite_db_config):
     sap.init_db()
     assert sap.sa_engine
     assert sap.session_factory
-    from aardvark.persistence.sqlalchemy.models import (AdvisorData,
-                                                        AWSIAMObject)
+    from aardvark.persistence.sqlalchemy.models import AdvisorData, AWSIAMObject
 
     with sap.session_scope() as session:
         session.query(AdvisorData).all()
@@ -80,8 +79,7 @@ def test_teardown_db(temp_sqlite_db_config):
     )
     sap.init_db()
     sap.teardown_db()
-    from aardvark.persistence.sqlalchemy.models import (AdvisorData,
-                                                        AWSIAMObject)
+    from aardvark.persistence.sqlalchemy.models import AdvisorData, AWSIAMObject
 
     with sap.session_scope() as session:
         with pytest.raises(OperationalError):

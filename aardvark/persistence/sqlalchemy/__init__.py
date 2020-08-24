@@ -1,20 +1,20 @@
 import datetime
 import logging
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import confuse
 from sqlalchemy import create_engine, engine
 from sqlalchemy import func as sa_func
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker, Session
 
 from aardvark.exceptions import CombineException, DatabaseException
 from aardvark.persistence import PersistencePlugin
-from aardvark.persistence.sqlalchemy.models import (AdvisorData, AWSIAMObject,
-                                                    Base)
+from aardvark.persistence.sqlalchemy.models import AdvisorData, AWSIAMObject, Base
 
 log = logging.getLogger("aardvark")
+session_type = Union[scoped_session, Session]
 
 
 class SQLAlchemyPersistence(PersistencePlugin):
@@ -41,7 +41,7 @@ class SQLAlchemyPersistence(PersistencePlugin):
 
         Base.metadata.create_all(bind=self.sa_engine)
 
-    def _create_session(self):
+    def _create_session(self) -> scoped_session:
         return scoped_session(self.session_factory)
 
     def teardown_db(self):
@@ -56,7 +56,7 @@ class SQLAlchemyPersistence(PersistencePlugin):
     @contextmanager
     def session_scope(self):
         """Provide a transactional scope around a series of operations."""
-        session = self._create_session()
+        session: session_type = self._create_session()
         try:
             yield session
             log.debug("committing SQLAlchemy DB session")
@@ -70,10 +70,10 @@ class SQLAlchemyPersistence(PersistencePlugin):
             session.close()
 
     def _combine_results(self, access_advisor_data: Dict[str, Any]) -> Dict[str, Any]:
-        _ = access_advisor_data.pop("page")
-        _ = access_advisor_data.pop("count")
-        _ = access_advisor_data.pop("total")
-        usage = dict()
+        access_advisor_data.pop("page")
+        access_advisor_data.pop("count")
+        access_advisor_data.pop("total")
+        usage: Dict[str, Dict] = dict()
         for arn, services in access_advisor_data.items():
             for service in services:
                 namespace = service.get("serviceNamespace")
@@ -141,7 +141,7 @@ class SQLAlchemyPersistence(PersistencePlugin):
         phrase: str = "",
         arns: Optional[List[str]] = None,
         regex: str = "",
-        session=None,
+        session: session_type = None,
     ) -> Dict[str, Any]:
         offset = (page - 1) * count if page else 0
         limit = count
@@ -203,40 +203,38 @@ class SQLAlchemyPersistence(PersistencePlugin):
 
     def create_or_update_advisor_data(
         self,
-        item_id,
-        lastAuthenticated,
-        serviceName,
-        serviceNamespace,
-        lastAuthenticatedEntity,
-        totalAuthenticatedEntities,
-        session=None,
+        item_id: int,
+        last_authenticated: int,
+        service_name: str,
+        service_namespace: str,
+        last_authenticated_entity: str,
+        total_authenticated_entities: int,
+        session: session_type = None,
     ):
         session = session or self._create_session()
-        serviceName = serviceName[:128]
-        serviceNamespace = serviceNamespace[:64]
+        service_name = service_name[:128]
+        service_namespace = service_namespace[:64]
         item = None
         try:
             item = (
                 session.query(AdvisorData)
                 .filter(AdvisorData.item_id == item_id)
-                .filter(AdvisorData.serviceNamespace == serviceNamespace)
+                .filter(AdvisorData.serviceNamespace == service_namespace)
                 .scalar()
             )
         except SQLAlchemyError as e:
             log.error(
-                "Database error: {} item_id: {} serviceNamespace: {}".format(
-                    e.args[0], item_id, serviceNamespace
-                )
-            )  # exception.messsage not supported in py3 e.args[0] replacement
+                f"Database error: {e} item_id: {item_id} serviceNamespace: {service_namespace}"
+            )
 
         if not item:
             item = AdvisorData(
                 item_id=item_id,
-                lastAuthenticated=lastAuthenticated,
-                serviceName=serviceName,
-                serviceNamespace=serviceNamespace,
-                lastAuthenticatedEntity=lastAuthenticatedEntity,
-                totalAuthenticatedEntities=totalAuthenticatedEntities,
+                lastAuthenticated=last_authenticated,
+                serviceName=service_name,
+                serviceNamespace=service_namespace,
+                lastAuthenticatedEntity=last_authenticated_entity,
+                totalAuthenticatedEntities=total_authenticated_entities,
             )
             session.add(item)
             return
@@ -249,11 +247,11 @@ class SQLAlchemyPersistence(PersistencePlugin):
         else:
             ts = item.lastAuthenticated
 
-        if lastAuthenticated > ts:
-            item.lastAuthenticated = lastAuthenticated
+        if last_authenticated > ts:
+            item.lastAuthenticated = last_authenticated
             session.add(item)
 
-        elif lastAuthenticated < ts:
+        elif last_authenticated < ts:
             """
             lastAuthenticated is obtained by calling get_service_last_accessed_details() method of the boto3 iam client.
             When there is no AA data about a service, the lastAuthenticated key is missing from the returned dictionary.
@@ -265,29 +263,28 @@ class SQLAlchemyPersistence(PersistencePlugin):
             timestamp persisted for this item. That means the service was accessed at some point in time, but now more than 365 passed since
             the last access, so AA no longer returns a timestamp for it.
             """
-            if lastAuthenticated == 0:
+            if last_authenticated == 0:
                 log.warning(
                     "Previously seen object not accessed in the past 365 days "
                     "(got null lastAuthenticated from AA). Setting to 0. "
-                    "Object {} service {} previous timestamp {}".format(
-                        item.item_id, item.serviceName, item.lastAuthenticated
-                    )
+                    f"Object {item.item_id} service {item.serviceName} previous timestamp {item.lastAuthenticated}"
                 )
                 item.lastAuthenticated = 0
                 session.add(item)
             else:
                 log.error(
-                    "Received an older time than previously seen for object {} service {} ({la} < {ila})!".format(
-                        item.item_id,
-                        item.serviceName,
-                        la=lastAuthenticated,
-                        ila=item.lastAuthenticated,
-                    )
+                    f"Received an older time than previously seen for object {item.item_id} service {item.serviceName} ({last_authenticated} < {item.lastAuthenticated})!"
                 )
 
-    def get_or_create_iam_object(self, arn):
+    def get_or_create_iam_object(self, arn: str):
         with self.session_scope() as session:
-            item = session.query(AWSIAMObject).filter(AWSIAMObject.arn == arn).scalar()
+            try:
+                item = (
+                    session.query(AWSIAMObject).filter(AWSIAMObject.arn == arn).scalar()
+                )
+            except SQLAlchemyError as e:
+                log.error(f"failed to retrieve IAM object: {e}")
+                raise
 
             added = False
             if not item:
@@ -299,6 +296,10 @@ class SQLAlchemyPersistence(PersistencePlugin):
 
             # we only need a refresh if the object was created
             if added:
-                session.commit()
-                session.refresh(item)
+                try:
+                    session.commit()
+                    session.refresh(item)
+                except SQLAlchemyError as e:
+                    log.error(f"failed to create IAM object: {e}")
+                    raise
             return item

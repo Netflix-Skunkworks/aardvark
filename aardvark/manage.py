@@ -57,11 +57,7 @@ class UpdateAccountThread(threading.Thread):
                 (account_num, role_name, arns) = ACCOUNT_QUEUE.get()
 
                 log.info(
-                    "Thread #{} updating account {} with {} arns".format(
-                        self.thread_ID,
-                        account_num,
-                        "all" if arns[0] == "all" else len(arns),
-                    )
+                    f"Thread #{self.thread_ID} updating account {account_num} with {'all' if arns[0] == 'all' else len(arns)} arns"
                 )
 
                 QUEUE_LOCK.release()
@@ -131,9 +127,7 @@ def config(
     LOG_CFG = {...}
     """
     # We don't set these until runtime.
-    default_db_uri = "{localdb}:///{path}/{filename}".format(
-        localdb=LOCALDB, path=os.getcwd(), filename=DEFAULT_LOCALDB_FILENAME
-    )
+    default_db_uri = f"{LOCALDB}:///{os.getcwd()}/{DEFAULT_LOCALDB_FILENAME}"
 
     if no_prompt:  # Just take the parameters as currently constituted.
         aardvark_role = aardvark_role_param or DEFAULT_AARDVARK_ROLE
@@ -150,27 +144,17 @@ def config(
         if bucket_param:
             bucket = bucket_param
         else:
-            print(
-                "\nAardvark can use SWAG to look up accounts. See {repo_url}".format(
-                    repo_url=SWAG_REPO_URL
-                )
-            )
+            print(f"\nAardvark can use SWAG to look up accounts. See {SWAG_REPO_URL}")
             use_swag = input("Do you use SWAG to track accounts? [yN]: ")
             if len(use_swag) > 0 and "yes".startswith(use_swag.lower()):
-                bucket_prompt = "SWAG_BUCKET [{default}]: ".format(
-                    default=DEFAULT_SWAG_BUCKET
-                )
+                bucket_prompt = f"SWAG_BUCKET [{DEFAULT_SWAG_BUCKET}]: "
                 bucket = input(bucket_prompt) or DEFAULT_SWAG_BUCKET
             else:
                 bucket = ""
 
-        aardvark_role_prompt = "ROLENAME [{default}]: ".format(
-            default=DEFAULT_AARDVARK_ROLE
-        )
-        db_uri_prompt = "DATABASE URI [{default}]: ".format(default=default_db_uri)
-        num_threads_prompt = "# THREADS [{default}]: ".format(
-            default=DEFAULT_NUM_THREADS
-        )
+        aardvark_role_prompt = f"ROLENAME [{DEFAULT_AARDVARK_ROLE}]: "
+        db_uri_prompt = f"DATABASE URI [{default_db_uri}]: "
+        num_threads_prompt = f"# THREADS [{DEFAULT_NUM_THREADS}]: "
 
         aardvark_role = (
             aardvark_role_param or input(aardvark_role_prompt) or DEFAULT_AARDVARK_ROLE
