@@ -47,9 +47,9 @@ class SQLAlchemyPersistence(PersistencePlugin):
     def teardown_db(self):
         Base.metadata.drop_all(bind=self.sa_engine)
 
-    def create_iam_object(self, arn, lastUpdated):
+    def create_iam_object(self, arn: str, last_updated: datetime.datetime) -> AWSIAMObject:
         with self.session_scope() as session:
-            item = AWSIAMObject(arn=arn, lastUpdated=lastUpdated)
+            item = AWSIAMObject(arn=arn, lastUpdated=last_updated)
             session.add(item)
         return item
 
@@ -236,7 +236,11 @@ class SQLAlchemyPersistence(PersistencePlugin):
                 lastAuthenticatedEntity=last_authenticated_entity,
                 totalAuthenticatedEntities=total_authenticated_entities,
             )
-            session.add(item)
+            try:
+                session.add(item)
+            except SQLAlchemyError as e:
+                log.error(f"failed to add AdvisorData item to session: {e}")
+                raise
             return
 
         # sqlite will return a string for item.lastAuthenticated, so we parse that into a datetime
@@ -249,7 +253,11 @@ class SQLAlchemyPersistence(PersistencePlugin):
 
         if last_authenticated > ts:
             item.lastAuthenticated = last_authenticated
-            session.add(item)
+            try:
+                session.add(item)
+            except SQLAlchemyError as e:
+                log.error(f"failed to add AdvisorData item to session: {e}")
+                raise
 
         elif last_authenticated < ts:
             """
@@ -270,7 +278,11 @@ class SQLAlchemyPersistence(PersistencePlugin):
                     f"Object {item.item_id} service {item.serviceName} previous timestamp {item.lastAuthenticated}"
                 )
                 item.lastAuthenticated = 0
-                session.add(item)
+                try:
+                    session.add(item)
+                except SQLAlchemyError as e:
+                    log.error(f"failed to add AdvisorData item to session: {e}")
+                    raise
             else:
                 log.error(
                     f"Received an older time than previously seen for object {item.item_id} service {item.serviceName} ({last_authenticated} < {item.lastAuthenticated})!"
@@ -292,7 +304,12 @@ class SQLAlchemyPersistence(PersistencePlugin):
                 added = True
             else:
                 item.lastUpdated = datetime.datetime.utcnow()
-            session.add(item)
+
+            try:
+                session.add(item)
+            except SQLAlchemyError as e:
+                log.error(f"failed to add AWSIAMObject item to session: {e}")
+                raise
 
             # we only need a refresh if the object was created
             if added:
