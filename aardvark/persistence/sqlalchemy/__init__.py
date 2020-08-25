@@ -47,7 +47,9 @@ class SQLAlchemyPersistence(PersistencePlugin):
     def teardown_db(self):
         Base.metadata.drop_all(bind=self.sa_engine)
 
-    def create_iam_object(self, arn: str, last_updated: datetime.datetime) -> AWSIAMObject:
+    def create_iam_object(
+        self, arn: str, last_updated: datetime.datetime
+    ) -> AWSIAMObject:
         with self.session_scope() as session:
             item = AWSIAMObject(arn=arn, lastUpdated=last_updated)
             session.add(item)
