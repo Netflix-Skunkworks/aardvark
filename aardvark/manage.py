@@ -184,9 +184,13 @@ def update(accounts, arns):
     """
     Asks AWS for new Access Advisor information.
     """
+    # The runner will default to all accounts and ARNs if None is passed in
+    accounts = None if accounts == "all" else accounts.split(",")
+    arns = None if arns == "all" else arns.split(",")
+
     r = RetrieverRunner()
     try:
-        asyncio.run(r.run())
+        asyncio.run(r.run(accounts=accounts, arns=arns))
     except KeyboardInterrupt:
         r.cancel()
 

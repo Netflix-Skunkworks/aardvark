@@ -95,7 +95,7 @@ class RetrieverRunner(AardvarkPlugin):
             )
             swag_service = self.swag_config["service_enabled_requirement"].get()
             if swag_service:
-                all_accounts = self.swag.get_service_enabled(
+                all_accounts = await sync_to_async(self.swag.get_service_enabled)(
                     swag_service, accounts_list=all_accounts
                 )
         except (KeyError, InvalidSWAGDataException) as e:
@@ -140,20 +140,30 @@ class RetrieverRunner(AardvarkPlugin):
             task.cancel()
             log.info(f"Task {task} canceled")
 
-    async def run(self, alternative_arn_queue: asyncio.Queue = None, alternative_account_queue: asyncio.Queue = None):
+    async def run(self, accounts: List[str] = None, arns: List[str] = None):
         self.register_retriever(AccessAdvisorRetriever())
         log.debug("starting retriever")
 
-        self.arn_queue = alternative_arn_queue or asyncio.Queue()
-        self.account_queue = alternative_account_queue or asyncio.Queue()
+        self.arn_queue = asyncio.Queue()
+        self.account_queue = asyncio.Queue()
 
-        # TODO: populate account queue with self._queue_accounts or self._queue_all_accounts
-        await self._queue_accounts(["awstest", "awsoss"])
+        lookup_accounts = True
+        if arns:
+            for arn in arns:
+                await self.arn_queue.put(arn)
+            lookup_accounts = False
 
-        for i in range(self.num_workers):
-            name = f"arn-lookup-worker-{i}"
-            task = asyncio.create_task(self._run_arn_lookup(name))
-            self.tasks.append(task)
+        # We only need to do account lookups if ARNs were not provided.
+        if lookup_accounts:
+            if accounts:
+                await self._queue_accounts(accounts)
+            else:
+                await self._queue_all_accounts()
+
+            for i in range(self.num_workers):
+                name = f"arn-lookup-worker-{i}"
+                task = asyncio.create_task(self._run_arn_lookup(name))
+                self.tasks.append(task)
 
         for i in range(self.num_workers):
             name = f"retriever-worker-{i}"
