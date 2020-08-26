@@ -1,34 +1,41 @@
-#ensure absolute import for python3
-from __future__ import absolute_import
-
 import copy
+import logging
 import time
 
 from blinker import Signal
+from cloudaux.aws.decorators import rate_limited
 from cloudaux.aws.iam import list_roles, list_users
 from cloudaux.aws.sts import boto3_cached_conn
-from cloudaux.aws.decorators import rate_limited
+
+from aardvark.plugins import AardvarkPlugin
+
+log = logging.getLogger("aardvark")
 
 
-class AccountToUpdate(object):
+class AccountToUpdate(AardvarkPlugin):
     on_ready = Signal()
     on_complete = Signal()
     on_error = Signal()
     on_failure = Signal()
 
-    def __init__(self, current_app, account_number, role_name, arns_list):
+    def __init__(
+        self, current_app, account_number, role_name, arns_list, alternative_config=None
+    ):
+        super().__init__(alternative_config=alternative_config)
         self.current_app = current_app
         self.account_number = account_number
         self.role_name = role_name
         self.arn_list = arns_list
         self.conn_details = {
-            'account_number': account_number,
-            'assume_role': role_name,
-            'session_name': 'aardvark',
-            'region': self.current_app.config.get('REGION') or 'us-east-1',
-            'arn_partition': self.current_app.config.get('ARN_PARTITION') or 'aws'
+            "account_number": account_number,
+            "assume_role": role_name,
+            "session_name": "aardvark",
+            "region": self.config["aws"]["region"].get() or "us-east-1",
+            "arn_partition": self.config["aws"]["arn_partition"].get() or "aws",
         }
-        self.max_access_advisor_job_wait = 5 * 60  # Wait 5 minutes before giving up on jobs
+        self.max_access_advisor_job_wait = (
+            5 * 60
+        )  # Wait 5 minutes before giving up on jobs
 
     def update_account(self):
         """
@@ -44,7 +51,7 @@ class AccountToUpdate(object):
         arns = self._get_arns()
 
         if not arns:
-            self.current_app.logger.warn("Zero ARNs collected. Exiting")
+            log.warning("Zero ARNs collected. Exiting")
             exit(-1)
 
         client = self._get_client()
@@ -52,7 +59,7 @@ class AccountToUpdate(object):
             details = self._call_access_advisor(client, list(arns))
         except Exception as e:
             self.on_failure.send(self, error=e)
-            self.current_app.logger.exception('Failed to call access advisor', exc_info=True)
+            log.exception("Failed to call access advisor", exc_info=True)
             return 255, None
         else:
             self.on_complete.send(self)
@@ -64,32 +71,31 @@ class AccountToUpdate(object):
         class property ARN filter
         :return: list of role ARNs
         """
-        client = boto3_cached_conn(
-            'iam', service_type='client', **self.conn_details)
+        client = boto3_cached_conn("iam", service_type="client", **self.conn_details)
 
         account_arns = set()
 
         for role in list_roles(**self.conn_details):
-            account_arns.add(role['Arn'])
+            account_arns.add(role["Arn"])
 
         for user in list_users(**self.conn_details):
-            account_arns.add(user['Arn'])
+            account_arns.add(user["Arn"])
 
-        for page in client.get_paginator('list_policies').paginate(Scope='Local'):
-            for policy in page['Policies']:
-                account_arns.add(policy['Arn'])
+        for page in client.get_paginator("list_policies").paginate(Scope="Local"):
+            for policy in page["Policies"]:
+                account_arns.add(policy["Arn"])
 
-        for page in client.get_paginator('list_groups').paginate():
-            for group in page['Groups']:
-                account_arns.add(group['Arn'])
+        for page in client.get_paginator("list_groups").paginate():
+            for group in page["Groups"]:
+                account_arns.add(group["Arn"])
 
         result_arns = set()
         for arn in self.arn_list:
-            if arn.lower() == 'all':
+            if arn.lower() == "all":
                 return account_arns
 
             if arn not in account_arns:
-                self.current_app.logger.warn("Provided ARN {arn} not found in account.".format(arn=arn))
+                log.warning("Provided ARN {arn} not found in account.".format(arn=arn))
                 continue
 
             result_arns.add(arn)
@@ -102,8 +108,7 @@ class AccountToUpdate(object):
 
         :return: boto3 IAM client in target account & role
         """
-        client = boto3_cached_conn(
-            'iam', **self.conn_details)
+        client = boto3_cached_conn("iam", **self.conn_details)
         return client
 
     def _call_access_advisor(self, iam, arns):
@@ -116,7 +121,7 @@ class AccountToUpdate(object):
     @rate_limited()
     def _generate_service_last_accessed_details(self, iam, arn):
         """ Wrapping the actual AWS API calls for rate limiting protection. """
-        return iam.generate_service_last_accessed_details(Arn=arn)['JobId']
+        return iam.generate_service_last_accessed_details(Arn=arn)["JobId"]
 
     @rate_limited()
     def _get_service_last_accessed_details(self, iam, job_id):
@@ -131,10 +136,14 @@ class AccountToUpdate(object):
                 jobs[job_id] = role_arn
             except iam.exceptions.NoSuchEntityException:
                 """ We're here because this ARN disappeared since the call to self._get_arns(). Log the missing ARN and move along.  """
-                self.current_app.logger.info('ARN {arn} found gone when fetching details'.format(arn=role_arn))
+                log.info(
+                    "ARN {arn} found gone when fetching details".format(arn=role_arn)
+                )
             except Exception as e:
                 self.on_error.send(self, error=e)
-                self.current_app.logger.error('Could not gather data from {0}.'.format(role_arn), exc_info=True)
+                log.error(
+                    "Could not gather data from {0}.".format(role_arn), exc_info=True
+                )
         return jobs
 
     def _get_job_results(self, iam, jobs):
@@ -158,28 +167,31 @@ class AccountToUpdate(object):
                 details = self._get_service_last_accessed_details(iam, job_id)
             except Exception as e:
                 self.on_error.send(self, error=e)
-                self.current_app.logger.error('Could not gather data from {0}.'.format(role_arn), exc_info=True)
+                log.error(
+                    "Could not gather data from {0}.".format(role_arn), exc_info=True
+                )
                 continue
 
             # Check job status
-            if details['JobStatus'] == 'IN_PROGRESS':
+            if details["JobStatus"] == "IN_PROGRESS":
                 job_queue.append(job_id)
-                if not job_queue:  # We're hanging on the last job, let's hang back for a bit
+                if (
+                    not job_queue
+                ):  # We're hanging on the last job, let's hang back for a bit
                     time.sleep(1)
                 continue
 
             # Check for job failure
-            if details['JobStatus'] != 'COMPLETED':
+            if details["JobStatus"] != "COMPLETED":
                 log_str = "Job {job_id} finished with unexpected status {status} for ARN {arn}.".format(
-                    job_id=job_id,
-                    status=details['JobStatus'],
-                    arn=role_arn)
+                    job_id=job_id, status=details["JobStatus"], arn=role_arn
+                )
 
-                failing_arns = self.current_app.config.get('FAILING_ARNS', {})
+                failing_arns = set(self.config["updater"]["failing_arns"].get())
                 if role_arn in failing_arns:
-                    self.current_app.logger.info(log_str)
+                    log.info(log_str)
                 else:
-                    self.current_app.logger.error(log_str)
+                    log.error(log_str)
 
                 continue
 
@@ -187,18 +199,18 @@ class AccountToUpdate(object):
             last_job_completion_time = time.time()
             updated_list = []
 
-            for detail in details.get('ServicesLastAccessed'):
+            for detail in details.get("ServicesLastAccessed"):
                 # create a copy, we're going to modify the time to epoch
                 updated_item = copy.copy(detail)
 
                 # AWS gives a datetime, convert to epoch
-                last_auth = detail.get('LastAuthenticated')
+                last_auth = detail.get("LastAuthenticated")
                 if last_auth:
                     last_auth = int(time.mktime(last_auth.timetuple()) * 1000)
                 else:
                     last_auth = 0
 
-                updated_item['LastAuthenticated'] = last_auth
+                updated_item["LastAuthenticated"] = last_auth
                 updated_list.append(updated_item)
 
             access_details[role_arn] = updated_list
@@ -208,7 +220,8 @@ class AccountToUpdate(object):
     def _log_unfinished_jobs(self, job_queue, job_details):
         for job_id in job_queue:
             role_arn = job_details[job_id]
-            self.current_app.logger.error("Job {job_id} for ARN {arn} didn't finish".format(
-                job_id=job_id,
-                arn=role_arn,
-            ))
+            log.error(
+                "Job {job_id} for ARN {arn} didn't finish".format(
+                    job_id=job_id, arn=role_arn,
+                )
+            )

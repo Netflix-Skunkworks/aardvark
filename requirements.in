@@ -1,0 +1,10 @@
+SQLAlchemy
+Flask
+blinker
+cloudaux
+confuse
+bunch
+flasgger
+swag_client
+flask_script
+gunicorn

@@ -4,21 +4,17 @@ with a support for regular expression operators in Postgres and SQLite.
 """
 
 # courtesy of Xion: http://xion.io/post/code/sqlalchemy-regex-filters.html
-
-#ensure absolute import for python3
-from __future__ import absolute_import
-
 import re
+import sqlite3
 
-from sqlalchemy import String as _String, event, exc
+from sqlalchemy import String as _String
+from sqlalchemy import event, exc
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import BinaryExpression, func, literal
 from sqlalchemy.sql.operators import custom_op
-import sqlite3
 
-
-__all__ = ['String']
+__all__ = ["String"]
 
 
 class String(_String):
@@ -27,28 +23,30 @@ class String(_String):
     Supports additional operators that can be used while constructing
     filter expressions.
     """
+
     class comparator_factory(_String.comparator_factory):
         """Contains implementation of :class:`String` operators
         related to regular expressions.
         """
+
         def regexp(self, other):
-            return RegexMatchExpression(self.expr, literal(other), custom_op('~'))
+            return RegexMatchExpression(self.expr, literal(other), custom_op("~"))
 
         def iregexp(self, other):
-            return RegexMatchExpression(self.expr, literal(other), custom_op('~*'))
+            return RegexMatchExpression(self.expr, literal(other), custom_op("~*"))
 
         def not_regexp(self, other):
-            return RegexMatchExpression(self.expr, literal(other), custom_op('!~'))
+            return RegexMatchExpression(self.expr, literal(other), custom_op("!~"))
 
         def not_iregexp(self, other):
-            return RegexMatchExpression(self.expr, literal(other), custom_op('!~*'))
+            return RegexMatchExpression(self.expr, literal(other), custom_op("!~*"))
 
 
 class RegexMatchExpression(BinaryExpression):
     """Represents matching of a column againsts a regular expression."""
 
 
-@compiles(RegexMatchExpression, 'sqlite')
+@compiles(RegexMatchExpression, "sqlite")
 def sqlite_regex_match(element, compiler, **kw):
     """Compile the SQL expression representing a regular expression match
     for the SQLite engine.
@@ -58,12 +56,15 @@ def sqlite_regex_match(element, compiler, **kw):
     try:
         func_name, _ = SQLITE_REGEX_FUNCTIONS[operator]
     except (KeyError, ValueError) as e:
-        would_be_sql_string = ' '.join((compiler.process(element.left),
-                                        operator,
-                                        compiler.process(element.right)))
+        would_be_sql_string = " ".join(
+            (compiler.process(element.left), operator, compiler.process(element.right))
+        )
         raise exc.StatementError(
             "unknown regular expression match operator: %s" % operator,
-            would_be_sql_string, None, e)
+            would_be_sql_string,
+            None,
+            e,
+        )
 
     # compile the expression as an invocation of the custom function
     regex_func = getattr(func, func_name)
@@ -71,7 +72,7 @@ def sqlite_regex_match(element, compiler, **kw):
     return compiler.process(regex_func_call)
 
 
-@event.listens_for(Engine, 'connect')
+@event.listens_for(Engine, "connect")
 def sqlite_engine_connect(dbapi_connection, connection_record):
     """Listener for the event of establishing connection to a SQLite database.
 
@@ -88,12 +89,11 @@ def sqlite_engine_connect(dbapi_connection, connection_record):
 # Mapping from the regular expression matching operators
 # to named Python functions that implement them for SQLite.
 SQLITE_REGEX_FUNCTIONS = {
-    '~': ('REGEXP',
-          lambda value, regex: bool(re.match(regex, value))),
-    '~*': ('IREGEXP',
-           lambda value, regex: bool(re.match(regex, value, re.IGNORECASE))),
-    '!~': ('NOT_REGEXP',
-           lambda value, regex: not re.match(regex, value)),
-    '!~*': ('NOT_IREGEXP',
-            lambda value, regex: not re.match(regex, value, re.IGNORECASE)),
+    "~": ("REGEXP", lambda value, regex: bool(re.match(regex, value))),
+    "~*": ("IREGEXP", lambda value, regex: bool(re.match(regex, value, re.IGNORECASE))),
+    "!~": ("NOT_REGEXP", lambda value, regex: not re.match(regex, value)),
+    "!~*": (
+        "NOT_IREGEXP",
+        lambda value, regex: not re.match(regex, value, re.IGNORECASE),
+    ),
 }
