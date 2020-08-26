@@ -7,9 +7,13 @@ updater:
 sqlalchemy:
   database_uri: sqlite:///./aardvark.db
 swag:
+  bucket: swag-data
   opts:
+    swag.schema_version: 2
     swag.type: s3
     swag.bucket_name: swag-data
+    swag.data_file: v2/accounts.json
+    swag.region: us-east-1
   filter: ""
   service_enabled_requirement: ""
 logging:
@@ -40,6 +44,10 @@ logging:
     gunicorn:
       handlers:
         - file
+        - console
+      level: DEBUG
+    asyncio:
+      handlers:
         - console
       level: DEBUG
   version: 1

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import queue
@@ -15,6 +16,7 @@ from swag_client.exceptions import InvalidSWAGDataException
 from aardvark import create_app
 from aardvark.configuration import CONFIG, create_config
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
+from aardvark.retrievers.runner import RetrieverRunner
 from aardvark.updater import AccountToUpdate
 
 manager = Manager(create_app)
@@ -182,31 +184,11 @@ def update(accounts, arns):
     """
     Asks AWS for new Access Advisor information.
     """
-    accounts = _prep_accounts(accounts)
-    arns = arns.split(",")
-
-    global ACCOUNT_QUEUE, QUEUE_LOCK, UPDATE_DONE
-
-    role_name = CONFIG["aws"]["rolename"].get()
-    num_threads = CONFIG["updater"]["num_threads"].get(int)
-
-    if num_threads > 6:
-        log.warning("Greater than 6 threads seems to cause problems")
-
-    QUEUE_LOCK.acquire()
-    for account_number in accounts:
-        ACCOUNT_QUEUE.put((account_number, role_name, arns))
-    QUEUE_LOCK.release()
-
-    threads = []
-    for thread_num in range(num_threads):
-        thread = UpdateAccountThread(thread_num + 1)
-        thread.start()
-        threads.append(thread)
-
-    while not ACCOUNT_QUEUE.empty():
-        pass
-    UPDATE_DONE = True
+    r = RetrieverRunner()
+    try:
+        asyncio.run(r.run())
+    except KeyboardInterrupt:
+        r.cancel()
 
 
 def _prep_accounts(account_names):

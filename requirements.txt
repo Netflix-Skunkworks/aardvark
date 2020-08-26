@@ -4,11 +4,12 @@
 #
 #    pip-compile --no-index --output-file=requirements.txt requirements.in
 #
+asgiref==3.2.10           # via -r requirements.in
 attrs==20.1.0             # via jsonschema
 blinker==1.4              # via -r requirements.in
-boto3==1.14.47            # via cloudaux, swag-client
+boto3==1.14.48            # via cloudaux, swag-client
 boto==2.49.0              # via cloudaux
-botocore==1.17.47         # via boto3, cloudaux, s3transfer
+botocore==1.17.48         # via boto3, cloudaux, s3transfer
 bunch==1.0.1              # via -r requirements.in
 click-log==0.3.2          # via swag-client
 click==7.1.2              # via click-log, flask, swag-client
@@ -25,7 +26,7 @@ flask-script==2.0.6       # via -r requirements.in
 flask==1.1.2              # via -r requirements.in, flasgger, flask-script
 gunicorn==20.0.4          # via -r requirements.in
 importlib-metadata==1.7.0  # via jsonschema, stevedore
-inflection==0.5.0         # via cloudaux
+inflection==0.5.1         # via cloudaux
 itsdangerous==1.1.0       # via flask
 jinja2==2.11.2            # via flask
 jmespath==0.10.0          # via boto3, botocore, swag-client
