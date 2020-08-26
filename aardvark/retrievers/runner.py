@@ -65,17 +65,17 @@ class RetrieverRunner(AardvarkPlugin):
         }
         client = await sync_to_async(boto3_cached_conn)("iam", service_type="client", **conn_details)
 
-        for role in list_roles(**conn_details):
+        for role in await sync_to_async(list_roles)(**conn_details):
             await self.arn_queue.put(role["Arn"])
 
-        for user in list_users(**conn_details):
+        for user in await sync_to_async(list_users)(**conn_details):
             await self.arn_queue.put(user["Arn"])
 
-        for page in client.get_paginator("list_policies").paginate(Scope="Local"):
+        for page in await sync_to_async(client.get_paginator("list_policies").paginate)(Scope="Local"):
             for policy in page["Policies"]:
                 await self.arn_queue.put(policy["Arn"])
 
-        for page in client.get_paginator("list_groups").paginate():
+        for page in await sync_to_async(client.get_paginator("list_groups").paginate)():
             for group in page["Groups"]:
                 await self.arn_queue.put(group["Arn"])
 

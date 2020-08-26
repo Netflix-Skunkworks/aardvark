@@ -19,12 +19,13 @@ class AccessAdvisorRetriever(RetrieverPlugin):
     # @rate_limited()
     async def _generate_service_last_accessed_details(self, iam_client, arn):
         """ Wrapping the actual AWS API calls for rate limiting protection. """
-        return iam_client.generate_service_last_accessed_details(Arn=arn)["JobId"]
+        result = await sync_to_async(iam_client.generate_service_last_accessed_details)(Arn=arn)
+        return result["JobId"]
 
     # @rate_limited()
     async def _get_service_last_accessed_details(self, iam_client, job_id):
         """ Wrapping the actual AWS API calls for rate limiting protection. """
-        return iam_client.get_service_last_accessed_details(JobId=job_id)
+        return await sync_to_async(iam_client.get_service_last_accessed_details)(JobId=job_id)
 
     @staticmethod
     def _get_account_from_arn(arn: str) -> str:
