@@ -13,10 +13,12 @@ from swag_client.backend import SWAGManager
 from swag_client.util import parse_swag_config_options
 
 from aardvark.plugins import AardvarkPlugin
+from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 from aardvark.retrievers import RetrieverPlugin
 from aardvark.retrievers.access_advisor import AccessAdvisorRetriever
 
 log = logging.getLogger("aardvark")
+sap = SQLAlchemyPersistence()
 
 
 class RetrieverRunner(AardvarkPlugin):
@@ -50,8 +52,13 @@ class RetrieverRunner(AardvarkPlugin):
             data = {}
             # Iterate through retrievers, passing the results from the previous to the next.
             for r in self.retrievers:
-                data = await r.run(arn, data)
-            # TODO: store results
+                try:
+                    data = await r.run(arn, data)
+                except Exception as e:
+                    log.error(f"failed to run retriever {r} on ARN {arn}; will requeue: {e}")
+                    await self.arn_queue.put("arn")
+            # TODO: handle nested data from retrievers in persistence layer
+            await sync_to_async(sap.store_role_data)({arn: data["access_advisor"]})
             self.arn_queue.task_done()
 
     async def _get_arns_for_account(self, account: str):
