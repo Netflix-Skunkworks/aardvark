@@ -8,3 +8,7 @@ class CombineException(AardvarkException):
 
 class DatabaseException(AardvarkException):
     pass
+
+
+class RetrieverException(AardvarkException):
+    pass

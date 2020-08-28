@@ -14,6 +14,7 @@ from swag_client.backend import SWAGManager
 from swag_client.exceptions import InvalidSWAGDataException
 
 from aardvark import create_app
+from aardvark.exceptions import AardvarkException
 from aardvark.configuration import CONFIG, create_config
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 from aardvark.retrievers.runner import RetrieverRunner
@@ -193,6 +194,9 @@ def update(accounts, arns):
         asyncio.run(r.run(accounts=accounts, arns=arns))
     except KeyboardInterrupt:
         r.cancel()
+    except AardvarkException as e:
+        log.error(e)
+        exit(1)
 
 
 def _prep_accounts(account_names):

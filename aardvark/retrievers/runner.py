@@ -2,16 +2,18 @@ import asyncio
 import logging
 import re
 from copy import copy
-from typing import List, Dict
+from typing import Any, Dict, List
 
 import confuse
 from asgiref.sync import sync_to_async
+from botocore.exceptions import ClientError
 from cloudaux.aws.iam import list_roles, list_users
 from cloudaux.aws.sts import boto3_cached_conn
 from swag_client import InvalidSWAGDataException
 from swag_client.backend import SWAGManager
 from swag_client.util import parse_swag_config_options
 
+from aardvark.exceptions import RetrieverException
 from aardvark.plugins import AardvarkPlugin
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 from aardvark.retrievers import RetrieverPlugin
@@ -19,12 +21,14 @@ from aardvark.retrievers.access_advisor import AccessAdvisorRetriever
 
 log = logging.getLogger("aardvark")
 sap = SQLAlchemyPersistence()
+re_account_id = re.compile(r"\d{12}")
 
 
 class RetrieverRunner(AardvarkPlugin):
     retrievers: List[RetrieverPlugin]
     account_queue: asyncio.Queue
     arn_queue: asyncio.Queue
+    results_queue: asyncio.Queue
     tasks: List[asyncio.Future]
     num_workers: int
     swag: SWAGManager
@@ -44,12 +48,17 @@ class RetrieverRunner(AardvarkPlugin):
         self.retrievers.append(r)
 
     async def _run_retrievers(self, name: str):
-        """Run all registered retrievers."""
+        """Run all registered retrievers.
+
+        Iterate through all registered retrievers (`self.retrievers`), passing the result dict from
+        the previous to the next retriever."""
         log.debug(f"creating {name}")
         while True:
             arn = await self.arn_queue.get()
             log.debug(f"{name} retrieving data for {arn}")
-            data = {}
+            data = {
+                "arn": arn,
+            }
             # Iterate through retrievers, passing the results from the previous to the next.
             for r in self.retrievers:
                 try:
@@ -57,9 +66,17 @@ class RetrieverRunner(AardvarkPlugin):
                 except Exception as e:
                     log.error(f"failed to run retriever {r} on ARN {arn}; will requeue: {e}")
                     await self.arn_queue.put("arn")
+                    self.arn_queue.task_done()
             # TODO: handle nested data from retrievers in persistence layer
-            await sync_to_async(sap.store_role_data)({arn: data["access_advisor"]})
+            await self.results_queue.put(data)
             self.arn_queue.task_done()
+
+    async def _store_results(self, name: str):
+        log.debug(f"creating {name}")
+        while True:
+            data = self.results_queue.get()
+            await sync_to_async(sap.store_role_data)({data["arn"]: data["access_advisor"]})
+            self.results_queue.task_done()
 
     async def _get_arns_for_account(self, account: str):
         """Retrieve ARNs for roles, users, policies, and groups in an account and add them to the ARN queue."""
@@ -95,7 +112,7 @@ class RetrieverRunner(AardvarkPlugin):
             self.account_queue.task_done()
 
     async def _get_swag_accounts(self) -> List[Dict]:
-        all_accounts: List[str] = []
+        log.debug("getting accounts from SWAG")
         try:
             all_accounts: List[Dict] = self.swag.get_all(
                 self.swag_config["filter"].get()
@@ -105,25 +122,31 @@ class RetrieverRunner(AardvarkPlugin):
                 all_accounts = await sync_to_async(self.swag.get_service_enabled)(
                     swag_service, accounts_list=all_accounts
                 )
-        except (KeyError, InvalidSWAGDataException) as e:
+        except (KeyError, InvalidSWAGDataException, ClientError) as e:
             log.error(
-                "Account names passed but SWAG not configured or unavailable: {}".format(
-                    e
-                )
+                f"Account names passed but SWAG not configured or unavailable: {e}"
             )
+            raise RetrieverException("Could not retrieve SWAG data") from e
 
         return all_accounts
 
     async def _queue_all_accounts(self):
+        """Add all accounts to the account queue.
+
+        Perform a SWAG lookup and add all returned accounts to `self.account_queue`."""
         for account in await self._get_swag_accounts():
             await self.account_queue.put(account["id"])
 
     async def _queue_accounts(self, account_names: List[str]):
+        """Add requested accounts to the account queue.
+
+        Given a list of account names and/or IDs, use SWAG to look up account numbers where needed
+        and add each account number to `self.account_queue`."""
         accounts = copy(account_names)
         for account in accounts:
-            if re.match(r"\d{12}", account):
-                accounts.remove(account)
+            if re_account_id.match(account):
                 await self.account_queue.put(account)
+                accounts.remove(account)
 
         all_accounts = await self._get_swag_accounts()
 
@@ -142,17 +165,28 @@ class RetrieverRunner(AardvarkPlugin):
                     continue
 
     def cancel(self):
+        """Send a cancel signal to all running workers."""
         log.info("Stopping runner tasks")
         for task in self.tasks:
             task.cancel()
             log.info(f"Task {task} canceled")
 
     async def run(self, accounts: List[str] = None, arns: List[str] = None):
+        """Prep account queue and kick off ARN lookup workers and retriever workers.
+
+        Populate ARN queue with ARNs if provided. Otherwise use SWAG to look up account
+        numbers and put those in the account queue.
+
+        After that, we start `updater.num_threads` workers for each queue. Workers will NOT
+        be started for the account queue if ARNs are provided since there will be no accounts
+        in the queue.
+        """
         self.register_retriever(AccessAdvisorRetriever())
         log.debug("starting retriever")
 
         self.arn_queue = asyncio.Queue()
         self.account_queue = asyncio.Queue()
+        self.results_queue = asyncio.Queue()
 
         lookup_accounts = True
         if arns:
@@ -177,8 +211,14 @@ class RetrieverRunner(AardvarkPlugin):
             task = asyncio.create_task(self._run_retrievers(name))
             self.tasks.append(task)
 
+        for i in range(self.num_workers):
+            name = f"results-worker-{i}"
+            task = asyncio.create_task(self._store_results(name))
+            self.tasks.append(task)
+
         await self.account_queue.join()
         await self.arn_queue.join()
+        await self.results_queue.join()
 
         for task in self.tasks:
             task.cancel()
