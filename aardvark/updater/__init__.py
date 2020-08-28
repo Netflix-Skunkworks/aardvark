@@ -164,8 +164,6 @@ class AccountToUpdate(object):
             # Check job status
             if details['JobStatus'] == 'IN_PROGRESS':
                 job_queue.append(job_id)
-                if not job_queue:  # We're hanging on the last job, let's hang back for a bit
-                    time.sleep(1)
                 continue
 
             # Check for job failure
