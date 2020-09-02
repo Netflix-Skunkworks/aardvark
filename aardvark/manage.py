@@ -299,7 +299,7 @@ def _prep_accounts(account_names):
     Considers account aliases as well as account names.
     Returns a list of account numbers
     """
-    matching_accounts = list()
+    matching_accounts = []
     account_names = account_names.split(',')
     account_names = {name.lower().strip() for name in account_names}
 

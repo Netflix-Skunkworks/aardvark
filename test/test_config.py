@@ -269,7 +269,7 @@ class TestConfigBase(unittest.TestCase):
                 if self.last_transcript:
                     fptr.write(
                         '\n'.join(
-                            map(lambda x: str(x), self.last_transcript)
+                            map(str, self.last_transcript)
                             ) + '\n'
                         )
 
