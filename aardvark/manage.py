@@ -2,23 +2,15 @@ import asyncio
 import logging
 import os
 import queue
-import re
 import threading
-from typing import Dict, List
 
-from blinker import Signal
-from bunch import Bunch
-from flask import current_app
 from flask_script import Command, Manager, Option
-from swag_client.backend import SWAGManager
-from swag_client.exceptions import InvalidSWAGDataException
 
 from aardvark import create_app
 from aardvark.exceptions import AardvarkException
 from aardvark.configuration import CONFIG, create_config
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 from aardvark.retrievers.runner import RetrieverRunner
-from aardvark.updater import AccountToUpdate
 
 manager = Manager(create_app)
 log = logging.getLogger("aardvark")
@@ -36,60 +28,6 @@ DEFAULT_LOCALDB_FILENAME = "aardvark.db"
 DEFAULT_SWAG_BUCKET = "swag-data"
 DEFAULT_AARDVARK_ROLE = "Aardvark"
 DEFAULT_NUM_THREADS = 5  # testing shows problems with more than 6 threads
-
-
-class UpdateAccountThread(threading.Thread):
-    global ACCOUNT_QUEUE, QUEUE_LOCK, UPDATE_DONE
-    on_ready = Signal()
-    on_complete = Signal()
-    on_failure = Signal()
-    persistence = SQLAlchemyPersistence()
-
-    def __init__(self, thread_ID):
-        self.thread_ID = thread_ID
-        threading.Thread.__init__(self)
-        self.app = current_app._get_current_object()
-
-    def run(self):
-        while not UPDATE_DONE:
-            self.on_ready.send(self)
-
-            QUEUE_LOCK.acquire()
-
-            if not ACCOUNT_QUEUE.empty():
-                (account_num, role_name, arns) = ACCOUNT_QUEUE.get()
-
-                log.info(
-                    f"Thread #{self.thread_ID} updating account {account_num} with {'all' if arns[0] == 'all' else len(arns)} arns"
-                )
-
-                QUEUE_LOCK.release()
-
-                account = AccountToUpdate(self.app, account_num, role_name, arns)
-                ret_code, aa_data = account.update_account()
-
-                if ret_code != 0:  # retrieve wasn't successful, put back on queue
-                    self.on_failure.send(self)
-                    QUEUE_LOCK.acquire()
-                    ACCOUNT_QUEUE.put((account_num, role_name, arns))
-                    QUEUE_LOCK.release()
-
-                log.info(
-                    "Thread #{} persisting data for account {}".format(
-                        self.thread_ID, account_num
-                    )
-                )
-
-                self.persistence.store_role_data(aa_data)
-
-                self.on_complete.send(self)
-                log.info(
-                    "Thread #{} FINISHED persisting data for account {}".format(
-                        self.thread_ID, account_num
-                    )
-                )
-            else:
-                QUEUE_LOCK.release()
 
 
 # All of these default to None rather than the corresponding DEFAULT_* values
@@ -197,67 +135,6 @@ def update(accounts, arns):
     except AardvarkException as e:
         log.error(e)
         exit(1)
-
-
-def _prep_accounts(account_names):
-    """
-    Convert CLI provided account names into list of accounts from SWAG.
-    Considers account aliases as well as account names.
-    Returns a list of account numbers
-    """
-    matching_accounts = list()
-    account_names = account_names.split(",")
-    account_names = {name.lower().strip() for name in account_names}
-
-    # create a new copy of the account_names list so we can remove accounts as needed
-    for account in list(account_names):
-        if re.match("\d{12}", account):
-            account_names.remove(account)
-            matching_accounts.append(account)
-
-    if not account_names:
-        return matching_accounts
-
-    try:
-        swag_opts = CONFIG["swag"]["opts"].get()
-        swag = SWAGManager(**swag_opts)
-
-        all_accounts: List[Dict] = swag.get_all(CONFIG["swag"]["filter"].get())
-
-        service_enabled_requirement = CONFIG["swag"][
-            "service_enabled_requirement"
-        ].get()
-        if service_enabled_requirement:
-            all_accounts = swag.get_service_enabled(
-                service_enabled_requirement, accounts_list=all_accounts
-            )
-
-    except (KeyError, InvalidSWAGDataException, Exception) as e:
-        log.error(
-            "Account names passed but SWAG not configured or unavailable: {}".format(e)
-        )
-
-    if "all" in account_names:
-        return [account["id"] for account in all_accounts]
-
-    lookup = {account["name"]: Bunch(account) for account in all_accounts}
-
-    for account in all_accounts:
-        # get the right key, depending on whether we're using swag v1 or v2
-        alias_key = "aliases" if account["schemaVersion"] == "2" else "alias"
-        for alias in account[alias_key]:
-            lookup[alias] = Bunch(account)
-
-    for name in account_names:
-        if name not in lookup:
-            log.warning("Could not find an account named %s" % name)
-            continue
-
-        account_number = lookup[name].get("id", None)
-        if account_number:
-            matching_accounts.append(account_number)
-
-    return matching_accounts
 
 
 class GunicornServer(Command):
