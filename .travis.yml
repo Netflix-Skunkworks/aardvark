@@ -26,6 +26,7 @@ deploy:
     tags: true
 notifications:
   email:
-    - aardvark-maintainers@netflix.com
+    recipients:
+      - aardvark-maintainers@netflix.com
     on_success: change
     on_failure: change
