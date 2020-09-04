@@ -222,6 +222,7 @@ class AccountToUpdate(AardvarkPlugin):
             role_arn = job_details[job_id]
             log.error(
                 "Job {job_id} for ARN {arn} didn't finish".format(
-                    job_id=job_id, arn=role_arn,
+                    job_id=job_id,
+                    arn=role_arn,
                 )
             )

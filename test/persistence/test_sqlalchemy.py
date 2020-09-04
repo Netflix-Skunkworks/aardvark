@@ -8,7 +8,6 @@ from aardvark.persistence import PersistencePlugin
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 from aardvark.plugins import AardvarkPlugin
 
-TEST_CONFIG = confuse.Configuration("aardvark_test", __name__)
 TIMESTAMP = datetime.datetime.now()
 ADVISOR_DATA = {
     "arn:aws:iam::123456789012:role/SpongebobSquarepants": [

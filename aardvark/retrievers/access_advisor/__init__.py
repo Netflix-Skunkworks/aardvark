@@ -6,9 +6,9 @@ from typing import Any, Dict, List, Union
 
 from asgiref.sync import sync_to_async
 import confuse
-from cloudaux.aws.decorators import rate_limited
 from cloudaux.aws.sts import boto3_cached_conn
 
+from aardvark.exceptions import AccessAdvisorException
 from aardvark.retrievers import RetrieverPlugin
 
 log = logging.getLogger("aardvark")
@@ -16,18 +16,22 @@ log = logging.getLogger("aardvark")
 
 class AccessAdvisorRetriever(RetrieverPlugin):
     def __init__(self, alternative_config: confuse.Configuration = None):
-        super().__init__(alternative_config=alternative_config)
+        super().__init__("access_advisor", alternative_config=alternative_config)
 
     async def _generate_service_last_accessed_details(self, iam_client, arn):
         """ Wrapping the actual AWS API calls for rate limiting protection. """
-        result = await sync_to_async(iam_client.generate_service_last_accessed_details)(Arn=arn)
+        result = await sync_to_async(iam_client.generate_service_last_accessed_details)(
+            Arn=arn
+        )
         return result["JobId"]
 
     async def _get_service_last_accessed_details(self, iam_client, job_id):
         """ Wrapping the actual AWS API calls for rate limiting protection. """
         attempts = 0
         while attempts < 10:
-            details = await sync_to_async(iam_client.get_service_last_accessed_details)(JobId=job_id)
+            details = await sync_to_async(iam_client.get_service_last_accessed_details)(
+                JobId=job_id
+            )
             job_status = details.get("JobStatus")
             if job_status == "COMPLETED":
                 return details
@@ -36,15 +40,17 @@ class AccessAdvisorRetriever(RetrieverPlugin):
                 await asyncio.sleep(2 ** attempts)
                 continue
             else:
-                # TODO: create custom exception
-                raise Exception("ohno")
+                error = details.get("Error") or "no error details provided"
+                raise AccessAdvisorException(f"Access Advisor job failed: {error}")
 
     @staticmethod
     def _get_account_from_arn(arn: str) -> str:
         return arn.split(":")[4]
 
     @staticmethod
-    def _transform_result(service_last_accessed: Dict[str, Union[str, int]]) -> Dict[str, Union[str, int, datetime.datetime]]:
+    def _transform_result(
+        service_last_accessed: Dict[str, Union[str, int]]
+    ) -> Dict[str, Union[str, int, datetime.datetime]]:
         last_authenticated = service_last_accessed.get("LastAuthenticated")
 
         # Convert from datetime to timestamp
@@ -57,6 +63,7 @@ class AccessAdvisorRetriever(RetrieverPlugin):
         return service_last_accessed
 
     async def run(self, arn: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        log.debug(f"running {self} for {arn}")
         account = self._get_account_from_arn(arn)
         conn_details: Dict[str, str] = {
             "account_number": account,

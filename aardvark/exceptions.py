@@ -2,6 +2,10 @@ class AardvarkException(Exception):
     pass
 
 
+class AccessAdvisorException(AardvarkException):
+    pass
+
+
 class CombineException(AardvarkException):
     pass
 

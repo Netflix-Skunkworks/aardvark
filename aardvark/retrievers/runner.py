@@ -34,7 +34,12 @@ class RetrieverRunner(AardvarkPlugin):
     swag: SWAGManager
     swag_config: confuse.ConfigView
 
-    def __init__(self, alternative_config: confuse.Configuration = None, alternative_arn_queue: asyncio.Queue = None, alternative_account_queue: asyncio.Queue = None):
+    def __init__(
+        self,
+        alternative_config: confuse.Configuration = None,
+        alternative_arn_queue: asyncio.Queue = None,
+        alternative_account_queue: asyncio.Queue = None,
+    ):
         super().__init__(alternative_config)
         self.tasks = []
         self.retrievers = []
@@ -47,7 +52,20 @@ class RetrieverRunner(AardvarkPlugin):
         """Add a retriever instance to be called during the run process."""
         self.retrievers.append(r)
 
-    async def _run_retrievers(self, name: str):
+    async def _run_retrievers(self, arn: str) -> Dict[str, Any]:
+        data = {
+            "arn": arn,
+        }
+        # Iterate through retrievers, passing the results from the previous to the next.
+        for r in self.retrievers:
+            try:
+                data = await r.run(arn, data)
+            except Exception as e:
+                log.error(f"failed to run {r} on ARN {arn}")
+                raise
+        return data
+
+    async def _retriever_loop(self, name: str):
         """Run all registered retrievers.
 
         Iterate through all registered retrievers (`self.retrievers`), passing the result dict from
@@ -56,26 +74,25 @@ class RetrieverRunner(AardvarkPlugin):
         while True:
             arn = await self.arn_queue.get()
             log.debug(f"{name} retrieving data for {arn}")
-            data = {
-                "arn": arn,
-            }
-            # Iterate through retrievers, passing the results from the previous to the next.
-            for r in self.retrievers:
-                try:
-                    data = await r.run(arn, data)
-                except Exception as e:
-                    log.error(f"failed to run retriever {r} on ARN {arn}; will requeue: {e}")
-                    await self.arn_queue.put("arn")
-                    self.arn_queue.task_done()
+            try:
+                data = await self._run_retrievers(arn)
+            except Exception as e:
+                log.error(f"failed to run retriever on ARN {arn}; will requeue: {e}")
+                await self.arn_queue.put("arn")
+                self.arn_queue.task_done()
+                continue
             # TODO: handle nested data from retrievers in persistence layer
             await self.results_queue.put(data)
             self.arn_queue.task_done()
 
-    async def _store_results(self, name: str):
+    async def _results_loop(self, name: str):
         log.debug(f"creating {name}")
         while True:
-            data = self.results_queue.get()
-            await sync_to_async(sap.store_role_data)({data["arn"]: data["access_advisor"]})
+            data = await self.results_queue.get()
+            log.debug(f"{name} storing results for {data['arn']}")
+            await sync_to_async(sap.store_role_data)(
+                {data["arn"]: data["access_advisor"]}
+            )
             self.results_queue.task_done()
 
     async def _get_arns_for_account(self, account: str):
@@ -87,7 +104,9 @@ class RetrieverRunner(AardvarkPlugin):
             "region": self.config["aws"]["region"].as_str() or "us-east-1",
             "arn_partition": self.config["aws"]["arn_partition"].as_str() or "aws",
         }
-        client = await sync_to_async(boto3_cached_conn)("iam", service_type="client", **conn_details)
+        client = await sync_to_async(boto3_cached_conn)(
+            "iam", service_type="client", **conn_details
+        )
 
         for role in await sync_to_async(list_roles)(**conn_details):
             await self.arn_queue.put(role["Arn"])
@@ -95,7 +114,9 @@ class RetrieverRunner(AardvarkPlugin):
         for user in await sync_to_async(list_users)(**conn_details):
             await self.arn_queue.put(user["Arn"])
 
-        for page in await sync_to_async(client.get_paginator("list_policies").paginate)(Scope="Local"):
+        for page in await sync_to_async(client.get_paginator("list_policies").paginate)(
+            Scope="Local"
+        ):
             for policy in page["Policies"]:
                 await self.arn_queue.put(policy["Arn"])
 
@@ -103,7 +124,7 @@ class RetrieverRunner(AardvarkPlugin):
             for group in page["Groups"]:
                 await self.arn_queue.put(group["Arn"])
 
-    async def _run_arn_lookup(self, name: str):
+    async def _arn_lookup_loop(self, name: str):
         log.debug(f"creating {name}")
         while True:
             account = await self.account_queue.get()
@@ -172,7 +193,7 @@ class RetrieverRunner(AardvarkPlugin):
             log.info(f"Task {task} canceled")
 
     async def run(self, accounts: List[str] = None, arns: List[str] = None):
-        """Prep account queue and kick off ARN lookup workers and retriever workers.
+        """Prep account queue and kick off ARN lookup, retriever, and results workers.
 
         Populate ARN queue with ARNs if provided. Otherwise use SWAG to look up account
         numbers and put those in the account queue.
@@ -203,24 +224,24 @@ class RetrieverRunner(AardvarkPlugin):
 
             for i in range(self.num_workers):
                 name = f"arn-lookup-worker-{i}"
-                task = asyncio.create_task(self._run_arn_lookup(name))
+                task = asyncio.create_task(self._arn_lookup_loop(name))
                 self.tasks.append(task)
 
         for i in range(self.num_workers):
             name = f"retriever-worker-{i}"
-            task = asyncio.create_task(self._run_retrievers(name))
+            task = asyncio.create_task(self._retriever_loop(name))
             self.tasks.append(task)
 
         for i in range(self.num_workers):
             name = f"results-worker-{i}"
-            task = asyncio.create_task(self._store_results(name))
+            task = asyncio.create_task(self._results_loop(name))
             self.tasks.append(task)
 
         await self.account_queue.join()
         await self.arn_queue.join()
         await self.results_queue.join()
 
-        for task in self.tasks:
-            task.cancel()
+        # Clean up our workers
+        self.cancel()
 
         await asyncio.gather(*self.tasks, return_exceptions=True)
