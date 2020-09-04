@@ -24,8 +24,6 @@ with open(os.path.join(ROOT, "aardvark", "__about__.py")) as f:
 
 
 install_requires = [
-    "aardvark",
-    "pexpect",
     "SQLAlchemy",
     "Flask",
     "blinker",
@@ -49,6 +47,7 @@ setup(
     author_email=about["__email__"],
     url=about["__uri__"],
     description=about["__summary__"],
+    python_requires="~=3.8",
     long_description=open(os.path.join(ROOT, "README.md")).read(),
     long_description_content_type="text/markdown",
     packages=find_packages(),
