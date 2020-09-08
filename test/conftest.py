@@ -1,5 +1,3 @@
-import asyncio
-
 import confuse
 import pytest
 
@@ -19,7 +17,3 @@ def mock_config(monkeypatch):
         aardvark.configuration, "CONFIG", confuse.Configuration("aardvark")
     )
 
-
-@pytest.fixture(scope="session")
-def aio_event_loop():
-    return asyncio.get_event_loop()

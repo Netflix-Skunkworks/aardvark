@@ -7,17 +7,17 @@ from aardvark.exceptions import AccessAdvisorException
 from aardvark.retrievers.access_advisor import AccessAdvisorRetriever
 
 
-def test_generate_service_last_accessed_details(mock_config, aio_event_loop):
+def test_generate_service_last_accessed_details(mock_config, event_loop):
     iam_client = MagicMock()
     iam_client.generate_service_last_accessed_details.return_value = {"JobId": "abc123"}
     aar = AccessAdvisorRetriever(alternative_config=mock_config)
-    job_id = aio_event_loop.run_until_complete(
+    job_id = event_loop.run_until_complete(
         aar._generate_service_last_accessed_details(iam_client, "abc123")
     )
     assert job_id == "abc123"
 
 
-def test_get_service_last_accessed_details(mock_config, aio_event_loop):
+def test_get_service_last_accessed_details(mock_config, event_loop):
     iam_client = MagicMock()
     iam_client.get_service_last_accessed_details.side_effect = [
         {"JobStatus": "IN_PROGRESS"},
@@ -36,7 +36,7 @@ def test_get_service_last_accessed_details(mock_config, aio_event_loop):
         },
     ]
     aar = AccessAdvisorRetriever(alternative_config=mock_config)
-    aa_data = aio_event_loop.run_until_complete(
+    aa_data = event_loop.run_until_complete(
         aar._get_service_last_accessed_details(iam_client, "abc123")
     )
     assert aa_data["ServicesLastAccessed"][0]["ServiceName"] == "AWS Lambda"
@@ -46,7 +46,7 @@ def test_get_service_last_accessed_details(mock_config, aio_event_loop):
     )
 
 
-def test_get_service_last_accessed_details_failure(mock_config, aio_event_loop):
+def test_get_service_last_accessed_details_failure(mock_config, event_loop):
     iam_client = MagicMock()
     iam_client.get_service_last_accessed_details.side_effect = [
         {"JobStatus": "IN_PROGRESS"},
@@ -54,7 +54,7 @@ def test_get_service_last_accessed_details_failure(mock_config, aio_event_loop):
     ]
     aar = AccessAdvisorRetriever(alternative_config=mock_config)
     with pytest.raises(AccessAdvisorException):
-        aa_data = aio_event_loop.run_until_complete(
+        aa_data = event_loop.run_until_complete(
             aar._get_service_last_accessed_details(iam_client, "abc123")
         )
 
@@ -159,7 +159,7 @@ def test_transform_result(service_last_accessed, expected):
     ],
 )
 @patch("aardvark.retrievers.access_advisor.boto3_cached_conn")
-def test_run(mock_boto3_cached_conn, mock_config, aio_event_loop, arn, data, expected):
+def test_run(mock_boto3_cached_conn, mock_config, event_loop, arn, data, expected):
     mock_iam_client = MagicMock()
     mock_iam_client.generate_service_last_accessed_details.return_value = {
         "JobId": "abc123"
@@ -178,7 +178,7 @@ def test_run(mock_boto3_cached_conn, mock_config, aio_event_loop, arn, data, exp
     }
     mock_boto3_cached_conn.return_value = mock_iam_client
     aar = AccessAdvisorRetriever(alternative_config=mock_config)
-    result = aio_event_loop.run_until_complete(
+    result = event_loop.run_until_complete(
         aar.run("arn:aws:iam::123456789012:user/admin", data)
     )
     assert result["access_advisor"]
@@ -188,17 +188,16 @@ def test_run(mock_boto3_cached_conn, mock_config, aio_event_loop, arn, data, exp
 @pytest.mark.parametrize("arn,data,expected", [("arn", {}, {})])
 @patch("aardvark.retrievers.access_advisor.boto3_cached_conn")
 def test_run_missing_arn(
-    mock_boto3_cached_conn, mock_config, aio_event_loop, arn, data, expected
+    mock_boto3_cached_conn, mock_config, event_loop, arn, data, expected
 ):
-    test_exception = Exception
     mock_iam_client = MagicMock()
-    mock_iam_client.exceptions.NoSuchEntityException = test_exception
+    mock_iam_client.exceptions.NoSuchEntityException = Exception
     mock_iam_client.generate_service_last_accessed_details.side_effect = (
         mock_iam_client.exceptions.NoSuchEntityException()
     )
     mock_boto3_cached_conn.return_value = mock_iam_client
     aar = AccessAdvisorRetriever(alternative_config=mock_config)
-    result = aio_event_loop.run_until_complete(
+    result = event_loop.run_until_complete(
         aar.run("arn:aws:iam::123456789012:user/admin", {})
     )
     assert result == expected

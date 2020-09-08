@@ -1,0 +1,4 @@
+cryptography
+moto
+pytest
+pytest-asyncio

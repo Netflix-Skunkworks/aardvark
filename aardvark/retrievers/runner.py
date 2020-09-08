@@ -29,6 +29,7 @@ class RetrieverRunner(AardvarkPlugin):
     account_queue: asyncio.Queue
     arn_queue: asyncio.Queue
     results_queue: asyncio.Queue
+    failed_arns: List[str]
     tasks: List[asyncio.Future]
     num_workers: int
     swag: SWAGManager
@@ -37,12 +38,11 @@ class RetrieverRunner(AardvarkPlugin):
     def __init__(
         self,
         alternative_config: confuse.Configuration = None,
-        alternative_arn_queue: asyncio.Queue = None,
-        alternative_account_queue: asyncio.Queue = None,
     ):
         super().__init__(alternative_config)
         self.tasks = []
         self.retrievers = []
+        self.failed_arns = []
         self.num_workers = self.config["updater"]["num_threads"].as_number()
         self.swag_config = self.config["swag"]
         swag_opts = parse_swag_config_options(self.swag_config["opts"].get())
@@ -62,7 +62,7 @@ class RetrieverRunner(AardvarkPlugin):
                 data = await r.run(arn, data)
             except Exception as e:
                 log.error(f"failed to run {r} on ARN {arn}")
-                raise
+                raise RetrieverException from e
         return data
 
     async def _retriever_loop(self, name: str):
@@ -72,13 +72,14 @@ class RetrieverRunner(AardvarkPlugin):
         the previous to the next retriever."""
         log.debug(f"creating {name}")
         while True:
+            log.debug("getting arn from queue")
             arn = await self.arn_queue.get()
             log.debug(f"{name} retrieving data for {arn}")
             try:
                 data = await self._run_retrievers(arn)
             except Exception as e:
-                log.error(f"failed to run retriever on ARN {arn}; will requeue: {e}")
-                await self.arn_queue.put("arn")
+                log.error(f"failed to run retriever on ARN {arn}: {e}")
+                self.failed_arns.append(arn)
                 self.arn_queue.task_done()
                 continue
             # TODO: handle nested data from retrievers in persistence layer
