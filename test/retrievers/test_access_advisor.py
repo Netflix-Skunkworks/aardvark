@@ -27,7 +27,9 @@ def test_get_service_last_accessed_details(mock_config, event_loop):
             "ServicesLastAccessed": [
                 {
                     "ServiceName": "AWS Lambda",
-                    "LastAuthenticated": datetime.datetime(2020, 4, 12, 15, 30, tzinfo=datetime.timezone.utc),
+                    "LastAuthenticated": datetime.datetime(
+                        2020, 4, 12, 15, 30, tzinfo=datetime.timezone.utc
+                    ),
                     "ServiceNamespace": "lambda",
                     "LastAuthenticatedEntity": "arn:aws:iam::123456789012:user/admin",
                     "TotalAuthenticatedEntities": 6,
@@ -83,7 +85,9 @@ def test_get_account_from_arn(arn, expected):
             # datetime object for LastAuthenticated
             {
                 "ServiceName": "AWS Lambda",
-                "LastAuthenticated": datetime.datetime(2020, 4, 12, 15, 30, tzinfo=datetime.timezone.utc),
+                "LastAuthenticated": datetime.datetime(
+                    2020, 4, 12, 15, 30, tzinfo=datetime.timezone.utc
+                ),
                 "ServiceNamespace": "lambda",
                 "LastAuthenticatedEntity": "arn:aws:iam::123456789012:user/admin",
                 "TotalAuthenticatedEntities": 6,
@@ -141,20 +145,20 @@ def test_transform_result(service_last_accessed, expected):
         ),
         # Non-empty input data
         (
-                "arn:aws:iam::123456789012:user/admin",
-                {"data_from_other_retrievers": "hello"},
-                {
-                    "access_advisor": [
-                        {
-                            "LastAuthenticated": 1586730600000,
-                            "LastAuthenticatedEntity": "arn:aws:iam::123456789012:user/admin",
-                            "ServiceName": "AWS Lambda",
-                            "ServiceNamespace": "lambda",
-                            "TotalAuthenticatedEntities": 6,
-                        }
-                    ],
-                    "data_from_other_retrievers": "hello"
-                },
+            "arn:aws:iam::123456789012:user/admin",
+            {"data_from_other_retrievers": "hello"},
+            {
+                "access_advisor": [
+                    {
+                        "LastAuthenticated": 1586730600000,
+                        "LastAuthenticatedEntity": "arn:aws:iam::123456789012:user/admin",
+                        "ServiceName": "AWS Lambda",
+                        "ServiceNamespace": "lambda",
+                        "TotalAuthenticatedEntities": 6,
+                    }
+                ],
+                "data_from_other_retrievers": "hello",
+            },
         ),
     ],
 )
@@ -169,7 +173,9 @@ def test_run(mock_boto3_cached_conn, mock_config, event_loop, arn, data, expecte
         "ServicesLastAccessed": [
             {
                 "ServiceName": "AWS Lambda",
-                "LastAuthenticated": datetime.datetime(2020, 4, 12, 15, 30, tzinfo=datetime.timezone.utc),
+                "LastAuthenticated": datetime.datetime(
+                    2020, 4, 12, 15, 30, tzinfo=datetime.timezone.utc
+                ),
                 "ServiceNamespace": "lambda",
                 "LastAuthenticatedEntity": "arn:aws:iam::123456789012:user/admin",
                 "TotalAuthenticatedEntities": 6,

@@ -81,10 +81,18 @@ async def test_results_loop(runner, mock_retriever):
 
 
 @patch("aardvark.retrievers.runner.boto3_cached_conn")
-@patch("aardvark.retrievers.runner.list_roles", return_value=[{"Arn": "role1"}, {"Arn": "role2"}])
-@patch("aardvark.retrievers.runner.list_users", return_value=[{"Arn": "user1"}, {"Arn": "user2"}])
+@patch(
+    "aardvark.retrievers.runner.list_roles",
+    return_value=[{"Arn": "role1"}, {"Arn": "role2"}],
+)
+@patch(
+    "aardvark.retrievers.runner.list_users",
+    return_value=[{"Arn": "user1"}, {"Arn": "user2"}],
+)
 @pytest.mark.asyncio
-async def test_get_arns_for_account(mock_list_users, mock_list_roles, mock_boto3_cached_conn, runner):
+async def test_get_arns_for_account(
+    mock_list_users, mock_list_roles, mock_boto3_cached_conn, runner
+):
     paginator = MagicMock()
     paginator.paginate.side_effect = (
         [{"Policies": [{"Arn": "policy1"}]}, {"Policies": [{"Arn": "policy2"}]}],
@@ -96,7 +104,16 @@ async def test_get_arns_for_account(mock_list_users, mock_list_roles, mock_boto3
     runner.arn_queue = asyncio.Queue()
     await runner._get_arns_for_account("012345678901")
     assert not runner.arn_queue.empty()
-    expected = ["role1", "role2", "user1", "user2", "policy1", "policy2", "group1", "group2"]
+    expected = [
+        "role1",
+        "role2",
+        "user1",
+        "user2",
+        "policy1",
+        "policy2",
+        "group1",
+        "group2",
+    ]
     for arn in expected:
         assert runner.arn_queue.get_nowait() == arn
 
@@ -111,7 +128,10 @@ async def test_arn_lookup_loop(mock_get_arns_for_account, runner):
     task = asyncio.create_task(runner._arn_lookup_loop(""))
     await account_queue.join()
     task.cancel()
-    assert mock_get_arns_for_account.call_args_list == [call("123456789012"), call("223456789012")]
+    assert mock_get_arns_for_account.call_args_list == [
+        call("123456789012"),
+        call("223456789012"),
+    ]
 
 
 def test_get_swag_accounts():

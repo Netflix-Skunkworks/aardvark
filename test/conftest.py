@@ -16,4 +16,3 @@ def mock_config(monkeypatch):
     monkeypatch.setattr(
         aardvark.configuration, "CONFIG", confuse.Configuration("aardvark")
     )
-
