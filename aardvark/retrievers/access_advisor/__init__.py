@@ -49,8 +49,8 @@ class AccessAdvisorRetriever(RetrieverPlugin):
 
     @staticmethod
     def _transform_result(
-        service_last_accessed: Dict[str, Union[str, int]]
-    ) -> Dict[str, Union[str, int, datetime.datetime]]:
+        service_last_accessed: Dict[str, Union[str, int, datetime.datetime]]
+    ) -> Dict[str, Union[str, int]]:
         last_authenticated = service_last_accessed.get("LastAuthenticated")
 
         # Convert from datetime to timestamp

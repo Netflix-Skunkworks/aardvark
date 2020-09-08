@@ -28,7 +28,7 @@ def test_get_service_last_accessed_details(mock_config, event_loop):
                 {
                     "ServiceName": "AWS Lambda",
                     "LastAuthenticated": datetime.datetime(
-                        2020, 4, 12, 15, 30
+                        2020, 4, 12, 15, 30, tzinfo=datetime.timezone.utc
                     ),
                     "ServiceNamespace": "lambda",
                     "LastAuthenticatedEntity": "arn:aws:iam::123456789012:user/admin",
@@ -86,7 +86,7 @@ def test_get_account_from_arn(arn, expected):
             {
                 "ServiceName": "AWS Lambda",
                 "LastAuthenticated": datetime.datetime(
-                    2020, 4, 12, 15, 30
+                    2020, 4, 12, 15, 30, tzinfo=datetime.timezone.utc
                 ),
                 "ServiceNamespace": "lambda",
                 "LastAuthenticatedEntity": "arn:aws:iam::123456789012:user/admin",
@@ -174,7 +174,7 @@ def test_run(mock_boto3_cached_conn, mock_config, event_loop, arn, data, expecte
             {
                 "ServiceName": "AWS Lambda",
                 "LastAuthenticated": datetime.datetime(
-                    2020, 4, 12, 15, 30
+                    2020, 4, 12, 15, 30, tzinfo=datetime.timezone.utc
                 ),
                 "ServiceNamespace": "lambda",
                 "LastAuthenticatedEntity": "arn:aws:iam::123456789012:user/admin",
