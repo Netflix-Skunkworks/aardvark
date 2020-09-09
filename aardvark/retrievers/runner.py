@@ -39,7 +39,7 @@ class RetrieverRunner(AardvarkPlugin):
         self,
         alternative_config: confuse.Configuration = None,
     ):
-        super().__init__(alternative_config)
+        super().__init__(alternative_config=alternative_config)
         self.tasks = []
         self.retrievers = []
         self.failed_arns = []
@@ -159,6 +159,10 @@ class RetrieverRunner(AardvarkPlugin):
         for account in await self._get_swag_accounts():
             await self.account_queue.put(account["id"])
 
+    async def _queue_arns(self, arns: List[str]):
+        for arn in arns:
+            await self.arn_queue.put(arn)
+
     async def _queue_accounts(self, account_names: List[str]):
         """Add requested accounts to the account queue.
 
@@ -212,8 +216,7 @@ class RetrieverRunner(AardvarkPlugin):
 
         lookup_accounts = True
         if arns:
-            for arn in arns:
-                await self.arn_queue.put(arn)
+            await self._queue_arns(arns)
             lookup_accounts = False
 
         # We only need to do account lookups if ARNs were not provided.

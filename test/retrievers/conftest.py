@@ -26,18 +26,18 @@ class FailingRetriever(RetrieverPlugin):
 
 
 @pytest.fixture(scope="function")
-def mock_retriever(mock_config):
-    return RetrieverStub(alternative_config=mock_config)
+def mock_retriever():
+    return RetrieverStub()
 
 
 @pytest.fixture(scope="function")
-def mock_failing_retriever(mock_config):
-    return FailingRetriever(alternative_config=mock_config)
+def mock_failing_retriever():
+    return FailingRetriever()
 
 
 @pytest.fixture(scope="function")
-def runner(mock_config):
-    return RetrieverRunner(alternative_config=mock_config)
+def runner():
+    return RetrieverRunner()
 
 
 @pytest.fixture(scope="function")

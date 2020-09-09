@@ -3,8 +3,8 @@ import pytest
 from aardvark.retrievers import RetrieverPlugin
 
 
-def test_retriever_plugin(mock_config, event_loop):
-    retriever = RetrieverPlugin("test_retriever", alternative_config=mock_config)
+def test_retriever_plugin(event_loop):
+    retriever = RetrieverPlugin("test_retriever")
     assert retriever.name == "test_retriever"
     assert str(retriever) == "Retriever(test_retriever)"
     with pytest.raises(NotImplementedError):

@@ -34,7 +34,7 @@ class RetrieverPlugin(AardvarkPlugin):
     _name: str
 
     def __init__(self, name: str, alternative_config: confuse.Configuration = None):
-        super().__init__(alternative_config)
+        super().__init__(alternative_config=alternative_config)
         self._name = name
 
     async def run(self, arn: str, data: Dict[str, Any]) -> Dict[str, Any]:
