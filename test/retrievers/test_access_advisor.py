@@ -94,7 +94,7 @@ def test_get_account_from_arn(arn, expected):
             },
             {
                 "ServiceName": "AWS Lambda",
-                "LastAuthenticated": 1586734200000,
+                "LastAuthenticated": 1586705400000,
                 "ServiceNamespace": "lambda",
                 "LastAuthenticatedEntity": "arn:aws:iam::123456789012:user/admin",
                 "TotalAuthenticatedEntities": 6,
@@ -134,7 +134,7 @@ def test_transform_result(service_last_accessed, expected):
             {
                 "access_advisor": [
                     {
-                        "LastAuthenticated": 1586734200000,
+                        "LastAuthenticated": 1586705400000,
                         "LastAuthenticatedEntity": "arn:aws:iam::123456789012:user/admin",
                         "ServiceName": "AWS Lambda",
                         "ServiceNamespace": "lambda",
@@ -150,7 +150,7 @@ def test_transform_result(service_last_accessed, expected):
             {
                 "access_advisor": [
                     {
-                        "LastAuthenticated": 1586734200000,
+                        "LastAuthenticated": 1586705400000,
                         "LastAuthenticatedEntity": "arn:aws:iam::123456789012:user/admin",
                         "ServiceName": "AWS Lambda",
                         "ServiceNamespace": "lambda",

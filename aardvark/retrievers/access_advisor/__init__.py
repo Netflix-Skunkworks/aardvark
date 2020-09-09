@@ -55,7 +55,7 @@ class AccessAdvisorRetriever(RetrieverPlugin):
 
         # Convert from datetime to timestamp
         if last_authenticated:
-            last_authenticated = int(time.mktime(last_authenticated.utctimetuple()) * 1000)
+            last_authenticated = int(last_authenticated.timestamp() * 1000)
         else:
             last_authenticated = 0
 
