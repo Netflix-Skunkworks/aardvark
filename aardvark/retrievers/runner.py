@@ -25,6 +25,8 @@ re_account_id = re.compile(r"\d{12}")
 
 
 class RetrieverRunner(AardvarkPlugin):
+    """Scheduling and execution for data retrieval tasks."""
+
     retrievers: List[RetrieverPlugin]
     account_queue: asyncio.Queue
     arn_queue: asyncio.Queue
@@ -53,6 +55,13 @@ class RetrieverRunner(AardvarkPlugin):
         self.retrievers.append(r)
 
     async def _run_retrievers(self, arn: str) -> Dict[str, Any]:
+        """Run retriever plugins for a given ARN.
+
+        Retriever plugins are executed in the order in which they are registered. Each retriever
+        is passed the result from the previous one, starting with a dict containing an `arn` element.
+
+        Note: The data from all previous retriever plugins is mutable by subsequent ones.
+        """
         data = {
             "arn": arn,
         }
@@ -66,10 +75,7 @@ class RetrieverRunner(AardvarkPlugin):
         return data
 
     async def _retriever_loop(self, name: str):
-        """Run all registered retrievers.
-
-        Iterate through all registered retrievers (`self.retrievers`), passing the result dict from
-        the previous to the next retriever."""
+        """Loop to consume from self.arn_queue and call the retriever runner function."""
         log.debug(f"creating {name}")
         while True:
             log.debug("getting arn from queue")
@@ -87,6 +93,7 @@ class RetrieverRunner(AardvarkPlugin):
             self.arn_queue.task_done()
 
     async def _results_loop(self, name: str):
+        """Loop to consume from self.results_queue and handle results."""
         log.debug(f"creating {name}")
         while True:
             data = await self.results_queue.get()
@@ -126,6 +133,7 @@ class RetrieverRunner(AardvarkPlugin):
                 await self.arn_queue.put(group["Arn"])
 
     async def _arn_lookup_loop(self, name: str):
+        """Loop to consume from self.account_queue to retrieve and enqueue ARNs for each account."""
         log.debug(f"creating {name}")
         while True:
             account = await self.account_queue.get()
@@ -134,6 +142,7 @@ class RetrieverRunner(AardvarkPlugin):
             self.account_queue.task_done()
 
     async def _get_swag_accounts(self) -> List[Dict]:
+        """Retrieve AWS accounts from SWAG based on the SWAG options in the application configuration."""
         log.debug("getting accounts from SWAG")
         try:
             all_accounts: List[Dict] = self.swag.get_all(
@@ -160,6 +169,7 @@ class RetrieverRunner(AardvarkPlugin):
             await self.account_queue.put(account["id"])
 
     async def _queue_arns(self, arns: List[str]):
+        """Add a list of ARNs to the ARN queue."""
         for arn in arns:
             await self.arn_queue.put(arn)
 

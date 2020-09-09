@@ -148,7 +148,9 @@ async def test_get_swag_accounts(mock_config):
     result = await runner._get_swag_accounts()
     assert result == swag_response
     runner.swag.get_all.assert_called_with("mock swag filter")
-    runner.swag.get_service_enabled.assert_called_with("glowcloud", accounts_list={"foo": "bar"})
+    runner.swag.get_service_enabled.assert_called_with(
+        "glowcloud", accounts_list={"foo": "bar"}
+    )
 
 
 @pytest.mark.asyncio
@@ -171,7 +173,9 @@ async def test_queue_all_accounts(runner):
     account_queue = asyncio.Queue()
     runner.account_queue = account_queue
     runner._get_swag_accounts = AsyncMock()
-    runner._get_swag_accounts.return_value = [{"id": account_id} for account_id in expected_account_ids]
+    runner._get_swag_accounts.return_value = [
+        {"id": account_id} for account_id in expected_account_ids
+    ]
     await runner._queue_all_accounts()
     for account_id in expected_account_ids:
         assert account_queue.get_nowait() == account_id

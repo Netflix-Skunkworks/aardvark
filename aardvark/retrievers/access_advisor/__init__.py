@@ -19,14 +19,14 @@ class AccessAdvisorRetriever(RetrieverPlugin):
         super().__init__("access_advisor", alternative_config=alternative_config)
 
     async def _generate_service_last_accessed_details(self, iam_client, arn):
-        """ Wrapping the actual AWS API calls for rate limiting protection. """
+        """Call IAM API to create an Access Advisor job."""
         result = await sync_to_async(iam_client.generate_service_last_accessed_details)(
             Arn=arn
         )
         return result["JobId"]
 
     async def _get_service_last_accessed_details(self, iam_client, job_id):
-        """ Wrapping the actual AWS API calls for rate limiting protection. """
+        """Retrieve Access Advisor job results. Do an exponential backoff if the job is not complete."""
         attempts = 0
         while attempts < 10:
             details = await sync_to_async(iam_client.get_service_last_accessed_details)(
@@ -45,12 +45,14 @@ class AccessAdvisorRetriever(RetrieverPlugin):
 
     @staticmethod
     def _get_account_from_arn(arn: str) -> str:
+        """Return the AWS account ID from an ARN."""
         return arn.split(":")[4]
 
     @staticmethod
     def _transform_result(
         service_last_accessed: Dict[str, Union[str, int, datetime.datetime]]
     ) -> Dict[str, Union[str, int]]:
+        """'Transform' Access Advisor result, which really just means convert the datetime to a timestamp."""
         last_authenticated = service_last_accessed.get("LastAuthenticated")
 
         # Convert from datetime to timestamp
@@ -63,6 +65,7 @@ class AccessAdvisorRetriever(RetrieverPlugin):
         return service_last_accessed
 
     async def run(self, arn: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Retrieve Access Advisor data for the given ARN and add the results to `data["access_advisor"]`."""
         log.debug(f"running {self} for {arn}")
         account = self._get_account_from_arn(arn)
         conn_details: Dict[str, str] = {
