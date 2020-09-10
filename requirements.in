@@ -8,3 +8,4 @@ flasgger
 swag_client
 flask_script
 gunicorn
+asgiref
