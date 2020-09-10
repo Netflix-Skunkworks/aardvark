@@ -27,7 +27,7 @@ DEFAULT_LOCALDB_FILENAME = "aardvark.db"
 # Configuration default values.
 DEFAULT_SWAG_BUCKET = "swag-data"
 DEFAULT_AARDVARK_ROLE = "Aardvark"
-DEFAULT_NUM_THREADS = 5  # testing shows problems with more than 6 threads
+DEFAULT_NUM_THREADS = 5
 
 
 # All of these default to None rather than the corresponding DEFAULT_* values
