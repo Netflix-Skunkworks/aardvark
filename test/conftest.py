@@ -5,21 +5,20 @@ import aardvark.configuration
 
 
 @pytest.fixture
-def temp_config_file(tmpdir_factory):
-    config_path = tmpdir_factory.mktemp("aardvark").join("config.yaml")
+def temp_config_file(tmp_path):
+    config_path = tmp_path / "config.yaml"
     return str(config_path)
 
 
 @pytest.fixture(autouse=True)
-def patch_config(monkeypatch, tmpdir_factory):
+def patch_config(monkeypatch, tmp_path):
     config = confuse.Configuration("aardvark-test", read=False)
-    tmpdir = tmpdir_factory.mktemp("aardvark-test")
 
-    db_path = tmpdir.join("aardvark-test.db")
+    db_path = tmp_path / "aardvark-test.db"
     db_uri = f"sqlite:///{db_path}"
     config["sqlalchemy"]["database_uri"] = str(db_uri)
 
-    log_path = tmpdir.join("aardvark-test.log")
+    log_path = tmp_path / "aardvark-test.log"
     config["logging"]["handlers"]["file"]["filename"] = str(log_path)
 
     # Monkeypatch the actual config object so we don't poison it for future tests
