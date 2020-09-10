@@ -2,7 +2,7 @@
 Aardvark
 =====
 Multi-Account AWS IAM Access Advisor API
-:copyright: (c) 2017 by Netflix
+:copyright: (c) 2020 by Netflix
 :license: Apache, see LICENSE for more details.
 """
 from __future__ import absolute_import

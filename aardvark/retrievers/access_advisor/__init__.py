@@ -1,8 +1,7 @@
 import asyncio
 import datetime
 import logging
-import time
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, Union
 
 from asgiref.sync import sync_to_async
 import confuse
