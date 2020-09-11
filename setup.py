@@ -10,8 +10,7 @@ from setuptools import setup
 setup(
     name="aardvark",
     python_requires="~=3.8",
-    version="1.0.0",
-    versioning="devcommit",
+    versioning="dev",
     setup_requires="setupmeta",
     entry_points={"console_scripts": ["aardvark = aardvark.manage:main"]},
 )
