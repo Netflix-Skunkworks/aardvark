@@ -1,7 +1,7 @@
 Aardvark
 ========
 [![NetflixOSS Lifecycle](https://img.shields.io/osslifecycle/Netflix/osstracker.svg)]()
-[![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/netflix-repokid)
+[![Discord chat](https://img.shields.io/discord/754080763070382130?logo=discord)](https://discord.gg/9kwMWa6)
 
 <img align="center" alt="Aardvark Logo" src="docs/images/aardvark_logo.jpg" width="10%" display="block">
 
