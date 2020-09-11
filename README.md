@@ -3,13 +3,23 @@ Aardvark
 [![NetflixOSS Lifecycle](https://img.shields.io/osslifecycle/Netflix/osstracker.svg)]()
 [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/netflix-repokid)
 
-<img align="center" alt="Aardvark Logo" src="docs/images/aardvark_logo.jpg" width="10%" display="block">
+![Aardvark Logo](docs/images/aardvark_logo_small.png)
 
 Aardvark is a multi-account AWS IAM Access Advisor API (and caching layer).
 
+## New in `v1.0.0`
+
+⚠️: Breaking change
+✨: Enhancement
+
+- ✨ Pluggable persistence layer
+- ✨ Pluggable retrievers
+- ⚠️ Upgrade to Python 3.8+
+- ⚠️ New configuration format
+
 ## Install:
 
-Ensure that you have Python 3.6 or later. Python 2 is no longer supported.
+Ensure that you have Python 3.8 or later.
 
 ```bash
 git clone https://github.com/Netflix-Skunkworks/aardvark.git
@@ -19,13 +29,10 @@ python3 -m venv env
 python setup.py develop
 ```
 
-### Known Dependencies
- - libpq-dev
-
 ## Configure Aardvark
 
 The Aardvark config wizard will guide you through the setup.
-```
+```bash
 % aardvark config
 
 Aardvark can use SWAG to look up accounts. https://github.com/Netflix-Skunkworks/swag-client
@@ -42,7 +49,7 @@ DATABASE [sqlite:////home/github/aardvark/aardvark.db]:
 
 ## Create the DB tables
 
-```
+```bash
 aardvark create_db
 ```
 
