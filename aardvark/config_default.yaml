@@ -1,11 +1,14 @@
+config_version: 0.0
 aws:
   rolename: Aardvark
   region: us-east-1
   arn_partition: aws
 updater:
   num_threads: 5
+  failing_arns: {}
 sqlalchemy:
   database_uri: sqlite:///./aardvark.db
+  track_modifications: false
 swag:
   bucket: swag-data
   opts:

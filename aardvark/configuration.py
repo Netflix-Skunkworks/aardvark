@@ -1,4 +1,5 @@
-import configparser
+import os
+import yaml
 
 import confuse
 
@@ -39,23 +40,91 @@ def create_config(
         f.write(CONFIG.dump(full=False))
 
 
-def get_config(component: str) -> configparser.SectionProxy:
-    """
-    Returns a different config set based on the provided environment.
-    This is used for testing.
-    """
-    return CONFIG[component]
+def _find_legacy_config():
+    """Search for config.py in order of preference and return path if it exists, else None"""
+    CONFIG_PATHS = [os.path.join(os.getcwd(), 'config.py'),
+                    '/etc/aardvark/config.py',
+                    '/apps/aardvark/config.py']
+    for path in CONFIG_PATHS:
+        if os.path.exists(path):
+            return path
+    return None
 
 
-def get_config_from_file(filepath: str, component: str) -> configparser.SectionProxy:
-    """
-    This returns an entirely different configuration value, and utilizes the environemnt provided
-    as an index into that configuration file. This is used via the CLI.
-    """
-    alternative_config = configparser.ConfigParser()
-    alternative_config.read(filepath)
-    return alternative_config[component]
+def convert_config(filename: str, write: bool = False):
+    """Convert a pre-1.0 config to a YAML config file"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("aardvark.config.legacy", filename)
+    old_config = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(old_config)
+
+    try:
+        CONFIG["aws"]["rolename"] = old_config.ROLENAME
+    except AttributeError:
+        pass
+
+    try:
+        CONFIG["aws"]["region"] = old_config.REGION
+    except AttributeError:
+        pass
+
+    try:
+        CONFIG["aws"]["arn_partition"] = old_config.ARN_PARTITION
+    except AttributeError:
+        pass
+
+    try:
+        CONFIG["sqlalchemy"]["database_uri"] = old_config.SQLALCHEMY_DATABASE_URI
+    except AttributeError:
+        pass
+
+    try:
+        CONFIG["sqlalchemy"]["track_modifications"] = old_config.SQLALCHEMY_TRACK_MODIFICATIONS
+    except AttributeError:
+        pass
+
+    try:
+        CONFIG["swag"]["bucket"] = old_config.SWAG_BUCKET
+    except AttributeError:
+        pass
+
+    try:
+        CONFIG["swag"]["opts"] = old_config.SWAG_OPTS
+    except AttributeError:
+        pass
+
+    try:
+        CONFIG["swag"]["filter"] = old_config.SWAG_FILTER
+    except AttributeError:
+        pass
+
+    try:
+        CONFIG["swag"]["service_enabled_requirement"] = old_config.SWAG_SERVICE_ENABLED_REQUIREMENT
+    except AttributeError:
+        pass
+
+    try:
+        CONFIG["updater"]["failing_arns"] = old_config.FAILING_ARNS
+    except AttributeError:
+        pass
+
+    try:
+        CONFIG["logging"] = old_config.LOG_CFG
+    except AttributeError:
+        pass
+
+    if write:
+        output_filename = os.path.join(CONFIG.config_dir(), confuse.CONFIG_FILENAME)
+        print(f"Writing new configuration to {output_filename}...")
+        with open(output_filename, 'w') as f:
+            yaml.dump(CONFIG, f)
 
 
 def open_config(filepath: str):
     CONFIG.read(filepath)
+
+
+legacy_config_file = _find_legacy_config()
+if legacy_config_file:
+    convert_config(legacy_config_file)
+
