@@ -109,15 +109,21 @@ def convert_config(filename: str, write: bool = False):
         pass
 
     try:
+        CONFIG["updater"]["num_threads"] = old_config.NUM_THREADS
+    except AttributeError:
+        pass
+
+    try:
         CONFIG["logging"] = old_config.LOG_CFG
     except AttributeError:
         pass
 
+    print(CONFIG.dump(full=False))
     if write:
         output_filename = os.path.join(CONFIG.config_dir(), confuse.CONFIG_FILENAME)
         print(f"Writing new configuration to {output_filename}...")
         with open(output_filename, 'w') as f:
-            yaml.dump(CONFIG, f)
+            CONFIG.dump(full=False)
 
 
 def open_config(filepath: str):
@@ -127,4 +133,3 @@ def open_config(filepath: str):
 legacy_config_file = _find_legacy_config()
 if legacy_config_file:
     convert_config(legacy_config_file)
-
