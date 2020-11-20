@@ -1,9 +1,9 @@
-#ensure absolute import for python3
+# ensure absolute import for python3
 from __future__ import absolute_import
 
 import os
 try:
-    import queue as Queue # Queue renamed to queue in py3
+    import queue as Queue  # Queue renamed to queue in py3
 except ModuleNotFoundError:
     import Queue
 import re
@@ -72,10 +72,19 @@ class UpdateAccountThread(threading.Thread):
                 self.app.logger.info("Thread #{} updating account {} with {} arns".format(
                                      self.thread_ID, account_num, 'all' if arns[0] == 'all' else len(arns)))
 
+                self.app.logger.debug(f"ACCOUNT_QUEUE depth now ~ {ACCOUNT_QUEUE.qsize()}")
+
                 QUEUE_LOCK.release()
 
-                account = AccountToUpdate(self.app, account_num, role_name, arns)
-                ret_code, aa_data = account.update_account()
+                try:
+                    account = AccountToUpdate(self.app, account_num, role_name, arns)
+                    ret_code, aa_data = account.update_account()
+                except Exception as e:
+                    self.on_failure.send(self, error=e)
+                    self.app.logger.exception(f"Thread #{self.thread_ID} caught exception - {e} - while attempting to update account {account_num}. Continuing.")
+                    # Assume that whatever went wrong isn't transient; to avoid an
+                    # endless loop we don't put the account back on the queue.
+                    continue
 
                 if ret_code != 0:  # retrieve wasn't successful, put back on queue
                     self.on_failure.send(self)
@@ -173,7 +182,7 @@ def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, n
     # We don't set these until runtime.
     default_db_uri = '{localdb}:///{path}/{filename}'.format(
         localdb=LOCALDB, path=os.getcwd(), filename=DEFAULT_LOCALDB_FILENAME
-        )
+    )
 
     if no_prompt:  # Just take the parameters as currently constituted.
         aardvark_role = aardvark_role_param or DEFAULT_AARDVARK_ROLE
@@ -280,6 +289,7 @@ def update(accounts, arns):
     QUEUE_LOCK.acquire()
     for account_number in accounts:
         ACCOUNT_QUEUE.put((account_number, role_name, arns))
+    current_app.logger.debug(f"Starting update operation for {ACCOUNT_QUEUE.qsize()} accounts using {num_threads} threads.")
     QUEUE_LOCK.release()
 
     threads = []
@@ -291,6 +301,7 @@ def update(accounts, arns):
     while not ACCOUNT_QUEUE.empty():
         pass
     UPDATE_DONE = True
+    current_app.logger.debug("Queue is empty; no more accounts to process.")
 
 
 def _prep_accounts(account_names):

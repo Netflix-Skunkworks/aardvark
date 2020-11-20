@@ -1,4 +1,4 @@
-#ensure absolute import for python3
+# ensure absolute import for python3
 from __future__ import absolute_import
 
 import copy
@@ -64,8 +64,7 @@ class AccountToUpdate(object):
         class property ARN filter
         :return: list of role ARNs
         """
-        client = boto3_cached_conn(
-            'iam', service_type='client', **self.conn_details)
+        client = self._get_client()
 
         account_arns = set()
 
@@ -102,9 +101,19 @@ class AccountToUpdate(object):
 
         :return: boto3 IAM client in target account & role
         """
-        client = boto3_cached_conn(
-            'iam', **self.conn_details)
-        return client
+        try:
+            client = boto3_cached_conn(
+                'iam', **self.conn_details)
+
+            if not client:
+                raise ValueError(f"boto3_cached_conn returned null IAM client for {self.account_number}")
+
+            return client
+
+        except Exception as e:
+            self.on_failure.send(self, error=e)
+            self.current_app.logger.exception(f"Failed to obtain boto3 IAM client for account {self.account_number}.", exc_info=False)
+            raise e
 
     def _call_access_advisor(self, iam, arns):
         jobs = self._generate_job_ids(iam, arns)
