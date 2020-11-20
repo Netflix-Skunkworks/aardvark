@@ -106,13 +106,13 @@ class AccountToUpdate(object):
                 'iam', **self.conn_details)
 
             if not client:
-                raise ValueError(f"boto3_cached_conn returned null IAM client for {self.account_number]}")
+                raise ValueError(f"boto3_cached_conn returned null IAM client for {self.account_number}")
 
             return client
 
         except Exception as e:
             self.on_failure.send(self, error=e)
-            self.current_app.logger.exception(f"Failed to obtain boto3 IAM client for account {self.account_number]}.", exc_info=False)
+            self.current_app.logger.exception(f"Failed to obtain boto3 IAM client for account {self.account_number}.", exc_info=False)
             raise e
 
     def _call_access_advisor(self, iam, arns):
