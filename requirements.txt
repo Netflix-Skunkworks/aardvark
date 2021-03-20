@@ -29,7 +29,7 @@ importlib-metadata==0.23
 inflection==0.3.1
 isort==4.3.21
 itsdangerous==1.1.0
-Jinja2==2.10.3
+Jinja2==2.11.3
 jmespath==0.9.4
 joblib==0.14.0
 jsonpickle==1.2
