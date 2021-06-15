@@ -43,7 +43,7 @@ def test_sqlalchemypersistence():
     sap = SQLAlchemyPersistence()
     assert isinstance(sap, AardvarkPlugin)
     assert isinstance(sap, PersistencePlugin)
-    assert sap.config
+    assert sap.config is not None
     assert isinstance(sap.config, confuse.Configuration)
 
 
