@@ -1,6 +1,3 @@
-#ensure absolute import for python3
-from __future__ import absolute_import
-
 import os.path
 import logging
 from logging import DEBUG, Formatter, StreamHandler
@@ -12,12 +9,6 @@ from flask import Flask
 from flasgger import Swagger
 
 db = SQLAlchemy()
-
-from aardvark.view import mod as advisor_bp  # noqa
-
-BLUEPRINTS = [
-    advisor_bp
-]
 
 API_VERSION = '1'
 
@@ -45,9 +36,8 @@ def create_app():
         """
         return 'ok'
 
-    # Blueprints
-    for bp in BLUEPRINTS:
-        app.register_blueprint(bp, url_prefix="/api/{0}".format(API_VERSION))
+    from aardvark import advisors
+    app.register_blueprint(advisors.bp, url_prefix=f"/api/{API_VERSION}")
 
     # Extensions:
     db.init_app(app)
@@ -71,7 +61,6 @@ def setup_logging(app):
     if not app.debug:
         if app.config.get('LOG_CFG'):
             # initialize the Flask logger (removes all handlers)
-            app.logger
             dictConfig(app.config.get('LOG_CFG'))
             app.logger = logging.getLogger(__name__)
         else:

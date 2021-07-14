@@ -16,11 +16,14 @@ services:
     depends_on:
       - init
     ports:
-      - 5000:5000
+      - "5000:5000"
     volumes:
       - data:/data
+    environment:
+      FLASK_APP: aardvark
+      FLASK_ENV: development
     env_file: .env
-    command: [ "aardvark", "start_api", "-b", "0.0.0.0:5000" ]
+    command: [ "flask", "run", "-h", "0.0.0.0", "-p", "5000" ]
 
   collector:
     build: .

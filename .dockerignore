@@ -3,3 +3,5 @@
 ./.travis.yml
 ./.env
 ./docker-compose.yml
+./aardvark.db
+./aardvark.log

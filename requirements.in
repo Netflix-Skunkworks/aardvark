@@ -1,0 +1,11 @@
+blinker
+bunch
+click
+cloudaux
+flasgger
+flask
+flask_restful
+flask_sqlalchemy
+psycopg2-binary
+sqlalchemy
+swag_client
