@@ -14,5 +14,5 @@ setup(
     extras_require={
         'tests': ["pytest", "pexpect"],
     },
-    entry_points={"console_scripts": ["aardvark = aardvark.manage:main"]},
+    entry_points={"console_scripts": ["aardvark = aardvark.manage:cli"]},
 )

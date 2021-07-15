@@ -115,13 +115,18 @@ def persist_aa_data(app, aa_data):
         db.session.commit()
 
 
-@app.cli.command("drop-db")
+@click.group()
+def cli():
+    pass
+
+
+@cli.command("drop-db")
 def drop_db():
     """ Drops the database. """
     db.drop_all()
 
 
-@app.cli.command("create-db")
+@cli.command("create-db")
 def create_db():
     """ Creates the database. """
     db.create_all()
@@ -130,7 +135,7 @@ def create_db():
 # All of these default to None rather than the corresponding DEFAULT_* values
 # so we can tell whether they were passed or not. We don't prompt for any of
 # the options that were passed as parameters.
-@app.cli.command("config")
+@cli.command("config")
 @click.option('--aardvark-role', '-a', type=str)
 @click.option('--swag-bucket', '-b', type=str)
 @click.option('--db-uri', '-d', type=str)
@@ -252,7 +257,7 @@ def config(aardvark_role, swag_bucket, db_uri, num_threads, no_prompt):
         filedata.write(log)
 
 
-@app.cli.command("update")
+@cli.command("update")
 @click.option('--accounts', '-a', type=str, default='all')
 @click.option('--arns', '-r', type=str, default='all')
 def update(accounts, arns):
@@ -346,10 +351,6 @@ def _prep_accounts(account_names):
             matching_accounts.append(account_number)
 
     return matching_accounts
-
-
-def main():
-    app.run()
 
 
 if __name__ == '__main__':
