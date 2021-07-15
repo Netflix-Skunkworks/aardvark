@@ -1,6 +1,7 @@
 SQLAlchemy
 Flask
 blinker
+click
 cloudaux
 confuse
 bunch

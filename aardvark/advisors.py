@@ -1,6 +1,3 @@
-# ensure absolute import for python3
-from __future__ import absolute_import
-
 from flask import Blueprint, abort, jsonify, request
 
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
@@ -14,13 +11,7 @@ def shutdown_session(exception=None):
     session.remove()
 
 
-# undocumented convenience pass-through so we can query directly from browser
-@advisor_bp.route("/advisors")
-def get():
-    return post()
-
-
-@advisor_bp.route("/advisors")
+@advisor_bp.route("/advisors", methods=["GET", "POST"])
 def post():
     """Get access advisor data for role(s)
     Returns access advisor information for role(s) that match filters

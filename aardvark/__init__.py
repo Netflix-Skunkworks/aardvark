@@ -10,7 +10,7 @@ from flask import Flask
 
 from aardvark.configuration import CONFIG
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
-from aardvark.view import advisor_bp
+from aardvark.advisors import advisor_bp
 
 BLUEPRINTS = [advisor_bp]
 

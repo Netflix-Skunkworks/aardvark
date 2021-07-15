@@ -1,9 +1,10 @@
+import logging
 import os
-import yaml
 
 import confuse
 
 CONFIG: confuse.Configuration = confuse.Configuration("aardvark", __name__)
+log = logging.getLogger(__name__)
 
 
 def create_config(
@@ -40,7 +41,7 @@ def create_config(
         f.write(CONFIG.dump(full=False))
 
 
-def _find_legacy_config():
+def find_legacy_config():
     """Search for config.py in order of preference and return path if it exists, else None"""
     CONFIG_PATHS = [os.path.join(os.getcwd(), 'config.py'),
                     '/etc/aardvark/config.py',
@@ -51,7 +52,7 @@ def _find_legacy_config():
     return None
 
 
-def convert_config(filename: str, write: bool = False):
+def convert_config(filename: str, write: bool = False, output_filename: str = ""):
     """Convert a pre-1.0 config to a YAML config file"""
     import importlib.util
     spec = importlib.util.spec_from_file_location("aardvark.config.legacy", filename)
@@ -118,18 +119,20 @@ def convert_config(filename: str, write: bool = False):
     except AttributeError:
         pass
 
-    print(CONFIG.dump(full=False))
+    log.debug("generated config: %s", CONFIG.dump(full=False))
     if write:
-        output_filename = os.path.join(CONFIG.config_dir(), confuse.CONFIG_FILENAME)
-        print(f"Writing new configuration to {output_filename}...")
+        if not output_filename:
+            output_filename = os.path.join(CONFIG.config_dir(), confuse.CONFIG_FILENAME)
+        log.info(f"writing new configuration to {output_filename}...")
         with open(output_filename, 'w') as f:
-            CONFIG.dump(full=False)
+            f.write(CONFIG.dump(full=False))
 
 
 def open_config(filepath: str):
     CONFIG.read(filepath)
 
 
-legacy_config_file = _find_legacy_config()
+legacy_config_file = find_legacy_config()
 if legacy_config_file:
-    convert_config(legacy_config_file)
+    log.warning("legacy configuration file detected: %s", legacy_config_file)
+    convert_config(legacy_config_file, write=True)
