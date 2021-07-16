@@ -1,9 +1,13 @@
 import logging
 import os
 
-import confuse
+from dynaconf import Dynaconf
 
-CONFIG: confuse.Configuration = confuse.Configuration("aardvark", __name__)
+settings = Dynaconf(
+    envvar_prefix="AARDVARK",
+    settings_files=['config.yaml', '.secrets.yaml'],
+)
+
 log = logging.getLogger(__name__)
 
 
@@ -20,25 +24,24 @@ def create_config(
     filename: str = "generated.yaml",
 ):
     if aardvark_role:
-        CONFIG["aws"]["rolename"] = aardvark_role
+        settings["aws"]["rolename"] = aardvark_role
     if arn_partition:
-        CONFIG["aws"]["arn_partition"] = arn_partition
+        settings["aws"]["arn_partition"] = arn_partition
     if region:
-        CONFIG["aws"]["region"] = region
+        settings["aws"]["region"] = region
     if swag_bucket:
-        CONFIG["swag"]["bucket"] = swag_bucket
+        settings["swag"]["bucket"] = swag_bucket
     if swag_filter:
-        CONFIG["swag"]["filter"] = swag_filter
+        settings["swag"]["filter"] = swag_filter
     if swag_service_enabled_requirement:
-        CONFIG["swag"]["service_enabled_requirement"] = swag_service_enabled_requirement
+        settings["swag"]["service_enabled_requirement"] = swag_service_enabled_requirement
     if sqlalchemy_database_uri:
-        CONFIG["sqlalchemy"]["database_uri"] = sqlalchemy_database_uri
+        settings["sqlalchemy"]["database_uri"] = sqlalchemy_database_uri
     if sqlalchemy_track_modifications:
-        CONFIG["sqlalchemy"]["track_modifications"] = sqlalchemy_track_modifications
+        settings["sqlalchemy"]["track_modifications"] = sqlalchemy_track_modifications
     if num_threads:
-        CONFIG["updater"]["num_threads"] = num_threads
-    with open(filename, "w") as f:
-        f.write(CONFIG.dump(full=False))
+        settings["updater"]["num_threads"] = num_threads
+    write_config(filename)
 
 
 def find_legacy_config():
@@ -60,79 +63,86 @@ def convert_config(filename: str, write: bool = False, output_filename: str = ""
     spec.loader.exec_module(old_config)
 
     try:
-        CONFIG["aws"]["rolename"] = old_config.ROLENAME
+        settings["aws"]["rolename"] = old_config.ROLENAME
     except AttributeError:
         pass
 
     try:
-        CONFIG["aws"]["region"] = old_config.REGION
+        settings["aws"]["region"] = old_config.REGION
     except AttributeError:
         pass
 
     try:
-        CONFIG["aws"]["arn_partition"] = old_config.ARN_PARTITION
+        settings["aws"]["arn_partition"] = old_config.ARN_PARTITION
     except AttributeError:
         pass
 
     try:
-        CONFIG["sqlalchemy"]["database_uri"] = old_config.SQLALCHEMY_DATABASE_URI
+        settings["sqlalchemy"]["database_uri"] = old_config.SQLALCHEMY_DATABASE_URI
     except AttributeError:
         pass
 
     try:
-        CONFIG["sqlalchemy"]["track_modifications"] = old_config.SQLALCHEMY_TRACK_MODIFICATIONS
+        settings["sqlalchemy"]["track_modifications"] = old_config.SQLALCHEMY_TRACK_MODIFICATIONS
     except AttributeError:
         pass
 
     try:
-        CONFIG["swag"]["bucket"] = old_config.SWAG_BUCKET
+        settings["swag"]["bucket"] = old_config.SWAG_BUCKET
     except AttributeError:
         pass
 
     try:
-        CONFIG["swag"]["opts"] = old_config.SWAG_OPTS
+        settings["swag"]["opts"] = old_config.SWAG_OPTS
     except AttributeError:
         pass
 
     try:
-        CONFIG["swag"]["filter"] = old_config.SWAG_FILTER
+        settings["swag"]["filter"] = old_config.SWAG_FILTER
     except AttributeError:
         pass
 
     try:
-        CONFIG["swag"]["service_enabled_requirement"] = old_config.SWAG_SERVICE_ENABLED_REQUIREMENT
+        settings["swag"]["service_enabled_requirement"] = old_config.SWAG_SERVICE_ENABLED_REQUIREMENT
     except AttributeError:
         pass
 
     try:
-        CONFIG["updater"]["failing_arns"] = old_config.FAILING_ARNS
+        settings["updater"]["failing_arns"] = old_config.FAILING_ARNS
     except AttributeError:
         pass
 
     try:
-        CONFIG["updater"]["num_threads"] = old_config.NUM_THREADS
+        settings["updater"]["num_threads"] = old_config.NUM_THREADS
     except AttributeError:
         pass
 
     try:
-        CONFIG["logging"] = old_config.LOG_CFG
+        settings["logging"] = old_config.LOG_CFG
     except AttributeError:
         pass
 
-    log.debug("generated config: %s", CONFIG.dump(full=False))
     if write:
-        if not output_filename:
-            output_filename = os.path.join(CONFIG.config_dir(), confuse.CONFIG_FILENAME)
-        log.info(f"writing new configuration to {output_filename}...")
-        with open(output_filename, 'w') as f:
-            f.write(CONFIG.dump(full=False))
+        write_config(output_filename)
 
 
 def open_config(filepath: str):
-    CONFIG.read(filepath)
+    settings.load_file(filepath)
 
 
-legacy_config_file = find_legacy_config()
-if legacy_config_file:
-    log.warning("legacy configuration file detected: %s", legacy_config_file)
-    convert_config(legacy_config_file, write=True)
+def write_config(filename: str):
+    from dynaconf import loaders
+    from dynaconf import settings as dcsettings
+    from dynaconf.utils.boxing import DynaBox
+
+    if not filename:
+        filename = "config.yaml"
+    log.info("writing config file to %s", filename)
+    data = dcsettings.as_dict()
+    loaders.write(filename, DynaBox(data).to_dict())
+
+
+# legacy_config_file = find_legacy_config()
+# if legacy_config_file:
+#     log.warning("legacy configuration file detected: %s", legacy_config_file)
+#     convert_config(legacy_config_file, write=True)

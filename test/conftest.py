@@ -1,5 +1,5 @@
-import confuse
 import pytest
+from dynaconf.utils import DynaconfDict
 
 import aardvark.configuration
 
@@ -12,17 +12,38 @@ def temp_config_file(tmp_path):
 
 @pytest.fixture(autouse=True)
 def patch_config(monkeypatch, tmp_path):
-    config = confuse.Configuration("aardvark-test", read=False)
-
     db_path = tmp_path / "aardvark-test.db"
     db_uri = f"sqlite:///{db_path}"
-    config["sqlalchemy"]["database_uri"] = str(db_uri)
-
     log_path = tmp_path / "aardvark-test.log"
-    config["logging"]["handlers"]["file"]["filename"] = str(log_path)
+
+    config = DynaconfDict(
+        {
+            "sqlalchemy": {
+                "database_uri": str(db_uri)
+            },
+            "logging": {
+                "handlers": {
+                    "file": {
+                        "filename": str(log_path)
+                    }
+                }
+            },
+            "updater": {
+                "num_threads": 1
+            },
+            "swag": {
+                "opts": {}
+            },
+            "aws": {
+                "rolename": "test",
+                "region": "test",
+                "arn_partition": "test",
+            },
+        }
+    )
 
     # Monkeypatch the actual config object so we don't poison it for future tests
-    monkeypatch.setattr(aardvark.configuration, "CONFIG", config)
+    monkeypatch.setattr(aardvark.configuration, "settings", config)
     yield config
 
 

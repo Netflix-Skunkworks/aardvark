@@ -1,11 +1,10 @@
-import confuse
-
-from aardvark.configuration import CONFIG
+from dynaconf import Dynaconf
+from dynaconf import settings
 
 
 class AardvarkPlugin:
-    def __init__(self, alternative_config: confuse.Configuration = None):
+    def __init__(self, alternative_config: Dynaconf = None):
         if alternative_config:
             self.config = alternative_config
         else:
-            self.config = CONFIG
+            self.config = settings

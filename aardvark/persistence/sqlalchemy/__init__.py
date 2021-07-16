@@ -3,7 +3,7 @@ import logging
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Union
 
-import confuse
+from dynaconf import Dynaconf
 from sqlalchemy import create_engine, engine
 from sqlalchemy import func as sa_func
 from sqlalchemy.exc import SQLAlchemyError
@@ -22,14 +22,14 @@ class SQLAlchemyPersistence(PersistencePlugin):
     session_factory: sessionmaker = None
 
     def __init__(
-        self, alternative_config: confuse.Configuration = None, initialize: bool = True
+        self, alternative_config: Dynaconf = None, initialize: bool = True
     ):
         super().__init__(alternative_config=alternative_config)
         if initialize:
             self.init_db()
 
     def init_db(self):
-        self.sa_engine = create_engine(self.config["sqlalchemy"]["database_uri"].get())
+        self.sa_engine = create_engine(self.config["sqlalchemy"]["database_uri"])
         self.session_factory = sessionmaker(
             autocommit=False,
             autoflush=False,
@@ -147,33 +147,34 @@ class SQLAlchemyPersistence(PersistencePlugin):
     ) -> Dict[str, Any]:
         offset = (page - 1) * count if page else 0
         limit = count
-        session = session or self._create_session()
-        # default unfiltered query
-        query = session.query(AWSIAMObject)
+        items = None
+        with self.session_scope() as session:
+            # default unfiltered query
+            query = session.query(AWSIAMObject)
 
-        try:
-            if phrase:
-                query = query.filter(AWSIAMObject.arn.ilike("%" + phrase + "%"))
+            try:
+                if phrase:
+                    query = query.filter(AWSIAMObject.arn.ilike("%" + phrase + "%"))
 
-            if arns:
-                query = query.filter(
-                    sa_func.lower(AWSIAMObject.arn).in_([arn.lower() for arn in arns])
-                )
+                if arns:
+                    query = query.filter(
+                        sa_func.lower(AWSIAMObject.arn).in_([arn.lower() for arn in arns])
+                    )
 
-            if regex:
-                query = query.filter(AWSIAMObject.arn.regexp(regex))
+                if regex:
+                    query = query.filter(AWSIAMObject.arn.regexp(regex))
 
-            total = query.count()
+                total = query.count()
 
-            if offset:
-                query = query.offset(offset)
+                if offset:
+                    query = query.offset(offset)
 
-            if limit:
-                query = query.limit(limit)
+                if limit:
+                    query = query.limit(limit)
 
-            items = query.all()
-        except Exception as e:
-            raise DatabaseException("Could not retrieve roles from database: %s", e)
+                items = query.all()
+            except Exception as e:
+                raise DatabaseException("Could not retrieve roles from database: %s", e)
 
         if not items:
             items = session.query(AWSIAMObject).offset(offset).limit(limit).all()

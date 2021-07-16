@@ -163,7 +163,7 @@ def test_transform_result(service_last_accessed, expected):
     ],
 )
 @patch("aardvark.retrievers.access_advisor.boto3_cached_conn")
-def test_run(mock_boto3_cached_conn, event_loop, arn, data, expected):
+def test_run(patch_config, mock_boto3_cached_conn, event_loop, arn, data, expected):
     mock_iam_client = MagicMock()
     mock_iam_client.generate_service_last_accessed_details.return_value = {
         "JobId": "abc123"
@@ -183,7 +183,7 @@ def test_run(mock_boto3_cached_conn, event_loop, arn, data, expected):
         ],
     }
     mock_boto3_cached_conn.return_value = mock_iam_client
-    aar = AccessAdvisorRetriever()
+    aar = AccessAdvisorRetriever(alternative_config=patch_config)
     result = event_loop.run_until_complete(
         aar.run("arn:aws:iam::123456789012:user/admin", data)
     )
@@ -193,14 +193,14 @@ def test_run(mock_boto3_cached_conn, event_loop, arn, data, expected):
 
 @pytest.mark.parametrize("arn,data,expected", [("arn", {}, {})])
 @patch("aardvark.retrievers.access_advisor.boto3_cached_conn")
-def test_run_missing_arn(mock_boto3_cached_conn, event_loop, arn, data, expected):
+def test_run_missing_arn(patch_config, mock_boto3_cached_conn, event_loop, arn, data, expected):
     mock_iam_client = MagicMock()
     mock_iam_client.exceptions.NoSuchEntityException = Exception
     mock_iam_client.generate_service_last_accessed_details.side_effect = (
         mock_iam_client.exceptions.NoSuchEntityException()
     )
     mock_boto3_cached_conn.return_value = mock_iam_client
-    aar = AccessAdvisorRetriever()
+    aar = AccessAdvisorRetriever(alternative_config=patch_config)
     result = event_loop.run_until_complete(
         aar.run("arn:aws:iam::123456789012:user/admin", {})
     )

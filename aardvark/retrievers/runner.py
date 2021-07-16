@@ -4,11 +4,11 @@ import re
 from copy import copy
 from typing import Any, Dict, List
 
-import confuse
 from asgiref.sync import sync_to_async
 from botocore.exceptions import ClientError
 from cloudaux.aws.iam import list_roles, list_users
 from cloudaux.aws.sts import boto3_cached_conn
+from dynaconf import Dynaconf
 from swag_client import InvalidSWAGDataException
 from swag_client.backend import SWAGManager
 from swag_client.util import parse_swag_config_options
@@ -20,7 +20,7 @@ from aardvark.retrievers import RetrieverPlugin
 from aardvark.retrievers.access_advisor import AccessAdvisorRetriever
 
 log = logging.getLogger("aardvark")
-sap = SQLAlchemyPersistence()
+sap = SQLAlchemyPersistence(initialize=False)
 re_account_id = re.compile(r"\d{12}")
 
 
@@ -35,19 +35,19 @@ class RetrieverRunner(AardvarkPlugin):
     tasks: List[asyncio.Future]
     num_workers: int
     swag: SWAGManager
-    swag_config: confuse.ConfigView
+    swag_config: Dict[str, str]
 
     def __init__(
         self,
-        alternative_config: confuse.Configuration = None,
+        alternative_config: Dynaconf = None,
     ):
         super().__init__(alternative_config=alternative_config)
         self.tasks = []
         self.retrievers = []
         self.failed_arns = []
-        self.num_workers = self.config["updater"]["num_threads"].as_number()
+        self.num_workers = self.config["updater"]["num_threads"]
         self.swag_config = self.config["swag"]
-        swag_opts = parse_swag_config_options(self.swag_config["opts"].get())
+        swag_opts = parse_swag_config_options(self.swag_config["opts"])
         self.swag = SWAGManager(**swag_opts)
 
     def register_retriever(self, r: RetrieverPlugin):
@@ -107,10 +107,10 @@ class RetrieverRunner(AardvarkPlugin):
         """Retrieve ARNs for roles, users, policies, and groups in an account and add them to the ARN queue."""
         conn_details: Dict[str, str] = {
             "account_number": account,
-            "assume_role": self.config["aws"]["rolename"].as_str(),
+            "assume_role": self.config["aws"]["rolename"],
             "session_name": "aardvark",
-            "region": self.config["aws"]["region"].as_str() or "us-east-1",
-            "arn_partition": self.config["aws"]["arn_partition"].as_str() or "aws",
+            "region": self.config["aws"]["region"] or "us-east-1",
+            "arn_partition": self.config["aws"]["arn_partition"] or "aws",
         }
         client = await sync_to_async(boto3_cached_conn)(
             "iam", service_type="client", **conn_details
@@ -146,9 +146,9 @@ class RetrieverRunner(AardvarkPlugin):
         log.debug("getting accounts from SWAG")
         try:
             all_accounts: List[Dict] = self.swag.get_all(
-                self.swag_config["filter"].get()
+                self.swag_config["filter"]
             )
-            swag_service = self.swag_config["service_enabled_requirement"].get()
+            swag_service = self.swag_config["service_enabled_requirement"]
             if swag_service:
                 all_accounts = await sync_to_async(self.swag.get_service_enabled)(
                     swag_service, accounts_list=all_accounts

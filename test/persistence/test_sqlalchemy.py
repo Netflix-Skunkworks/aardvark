@@ -1,7 +1,7 @@
 import datetime
 
-import confuse
 import pytest
+from dynaconf.utils import DynaconfDict
 from sqlalchemy.exc import OperationalError
 
 from aardvark.persistence import PersistencePlugin
@@ -34,28 +34,32 @@ ADVISOR_DATA = {
 @pytest.fixture(scope="function")
 def temp_sqlite_db_config():
     db_uri = "sqlite:///:memory:"
-    custom_config = confuse.Configuration("aardvark_test", __name__, read=False)
+    custom_config = DynaconfDict({
+        "sqlalchemy": {
+            "database_uri": str(db_uri)
+        },
+    })
     custom_config["sqlalchemy"]["database_uri"] = db_uri
     return custom_config
 
 
-def test_sqlalchemypersistence():
-    sap = SQLAlchemyPersistence()
+def test_sqlalchemypersistence(patch_config):
+    sap = SQLAlchemyPersistence(alternative_config=patch_config)
     assert isinstance(sap, AardvarkPlugin)
     assert isinstance(sap, PersistencePlugin)
     assert sap.config
-    assert isinstance(sap.config, confuse.Configuration)
 
 
 def test_sqlalchemypersistence_custom_config():
-    custom_config = confuse.Configuration("aardvark", __name__)
+    custom_config = DynaconfDict({
+        "test_key": "test_value"
+    })
     custom_config["test_key"] = "test_value"
     sap = SQLAlchemyPersistence(alternative_config=custom_config, initialize=False)
     assert isinstance(sap, AardvarkPlugin)
     assert isinstance(sap, PersistencePlugin)
     assert sap.config
-    assert isinstance(sap.config, confuse.Configuration)
-    assert sap.config["test_key"].get() == "test_value"
+    assert sap.config["test_key"] == "test_value"
 
 
 def test_init_db(temp_sqlite_db_config):

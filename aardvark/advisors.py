@@ -3,12 +3,6 @@ from flask import Blueprint, abort, jsonify, request
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 
 advisor_bp = Blueprint("advisor", __name__)
-session = SQLAlchemyPersistence()._create_session()
-
-
-@advisor_bp.teardown_request
-def shutdown_session(exception=None):
-    session.remove()
 
 
 @advisor_bp.route("/advisors", methods=["GET", "POST"])
@@ -111,7 +105,6 @@ def post():
         phrase=phrase,
         arns=arns,
         regex=regex,
-        session=session,
     )
 
     return jsonify(values)

@@ -1,6 +1,3 @@
-# ensure absolute import for python3
-from __future__ import absolute_import
-
 import logging
 import os.path
 from logging.config import dictConfig
@@ -8,7 +5,7 @@ from logging.config import dictConfig
 from flasgger import Swagger
 from flask import Flask
 
-from aardvark.configuration import CONFIG
+from aardvark.configuration import settings
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 from aardvark.advisors import advisor_bp
 
@@ -16,14 +13,14 @@ BLUEPRINTS = [advisor_bp]
 
 API_VERSION = "1"
 
-persistence = SQLAlchemyPersistence()
-dictConfig(CONFIG["logging"].get())
+dictConfig(settings["logging"])
 log = logging.getLogger("aardvark")
 
 
 def create_app(test_config=None):
     app = Flask(__name__, static_url_path="/static")
     Swagger(app)
+    persistence = SQLAlchemyPersistence()
 
     if test_config is not None:
         app.config.update(test_config)

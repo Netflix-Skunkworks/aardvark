@@ -2,14 +2,16 @@ import os
 import pytest
 from typing import Any, Dict
 
-import confuse
+from dynaconf import Dynaconf
+from dynaconf.utils import DynaconfDict
 
+import aardvark.configuration
 from aardvark.retrievers import RetrieverPlugin
 from aardvark.retrievers.runner import RetrieverRunner
 
 
 class RetrieverStub(RetrieverPlugin):
-    def __init__(self, alternative_config: confuse.Configuration = None):
+    def __init__(self, alternative_config: Dynaconf = None):
         super().__init__("retriever_stub", alternative_config=alternative_config)
 
     async def run(self, arn: str, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -18,7 +20,7 @@ class RetrieverStub(RetrieverPlugin):
 
 
 class FailingRetriever(RetrieverPlugin):
-    def __init__(self, alternative_config: confuse.Configuration = None):
+    def __init__(self, alternative_config: Dynaconf = None):
         super().__init__("retriever_stub", alternative_config=alternative_config)
 
     async def run(self, arn: str, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -26,18 +28,18 @@ class FailingRetriever(RetrieverPlugin):
 
 
 @pytest.fixture(scope="function")
-def mock_retriever():
-    return RetrieverStub()
+def mock_retriever(patch_config):
+    return RetrieverStub(alternative_config=patch_config)
 
 
 @pytest.fixture(scope="function")
-def mock_failing_retriever():
-    return FailingRetriever()
+def mock_failing_retriever(patch_config):
+    return FailingRetriever(alternative_config=patch_config)
 
 
 @pytest.fixture(scope="function")
-def runner():
-    return RetrieverRunner()
+def runner(patch_config):
+    return RetrieverRunner(alternative_config=patch_config)
 
 
 @pytest.fixture(scope="function")
