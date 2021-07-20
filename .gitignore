@@ -107,4 +107,4 @@ ENV/
 
 # config
 .secrets.yaml
-settings.local.yaml
+settings.local.yaml.bak

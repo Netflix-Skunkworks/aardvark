@@ -51,9 +51,7 @@ def cli():
 @click.option("--db-uri", "-d", type=str)
 @click.option("--num-threads", type=int)
 @click.option("--no-prompt", is_flag=True, default=False)
-def config(
-    aardvark_role_param, bucket_param, db_uri_param, num_threads_param, no_prompt
-):
+def config(aardvark_role, swag_bucket, db_uri, num_threads, no_prompt):
     """
     Creates a config.py configuration file from user input or default values.
 
@@ -82,41 +80,44 @@ def config(
     """
     # We don't set these until runtime.
     default_db_uri = f"{LOCALDB}:///{os.getcwd()}/{DEFAULT_LOCALDB_FILENAME}"
+    default_save_file = "settings.local.yaml"
 
     if no_prompt:  # Just take the parameters as currently constituted.
-        aardvark_role = aardvark_role_param or DEFAULT_AARDVARK_ROLE
-        num_threads = num_threads_param or DEFAULT_NUM_THREADS
-        db_uri = db_uri_param or default_db_uri
+        aardvark_role = aardvark_role or DEFAULT_AARDVARK_ROLE
+        num_threads = num_threads or DEFAULT_NUM_THREADS
+        db_uri = db_uri or default_db_uri
 
         # If a swag bucket was specified we set write_swag here so it gets
         # written out to the config file below.
-        bucket = bucket_param or DEFAULT_SWAG_BUCKET
+        bucket = swag_bucket or DEFAULT_SWAG_BUCKET
 
     else:
         # This is essentially the same "param, or input, or default"
         # structure as the additional parameters below.
-        if bucket_param:
-            bucket = bucket_param
+        if swag_bucket:
+            bucket = swag_bucket
         else:
             print(f"\nAardvark can use SWAG to look up accounts. See {SWAG_REPO_URL}")
             use_swag = input("Do you use SWAG to track accounts? [yN]: ")
             if len(use_swag) > 0 and "yes".startswith(use_swag.lower()):
-                bucket_prompt = f"SWAG_BUCKET [{DEFAULT_SWAG_BUCKET}]: "
+                bucket_prompt = f"SWAG bucket [{DEFAULT_SWAG_BUCKET}]: "
                 bucket = input(bucket_prompt) or DEFAULT_SWAG_BUCKET
             else:
                 bucket = ""
 
-        aardvark_role_prompt = f"ROLENAME [{DEFAULT_AARDVARK_ROLE}]: "
-        db_uri_prompt = f"DATABASE URI [{default_db_uri}]: "
-        num_threads_prompt = f"# THREADS [{DEFAULT_NUM_THREADS}]: "
+        aardvark_role_prompt = f"Role Name [{DEFAULT_AARDVARK_ROLE}]: "
+        db_uri_prompt = f"Database URI [{default_db_uri}]: "
+        num_threads_prompt = f"Worker Count [{DEFAULT_NUM_THREADS}]: "
+        save_file_prompt = f"Config file location [{default_save_file}]: "
 
         aardvark_role = (
-            aardvark_role_param or input(aardvark_role_prompt) or DEFAULT_AARDVARK_ROLE
+                aardvark_role or input(aardvark_role_prompt) or DEFAULT_AARDVARK_ROLE
         )
-        db_uri = db_uri_param or input(db_uri_prompt) or default_db_uri
+        db_uri = db_uri or input(db_uri_prompt) or default_db_uri
         num_threads = (
-            num_threads_param or input(num_threads_prompt) or DEFAULT_NUM_THREADS
+                num_threads or input(num_threads_prompt) or DEFAULT_NUM_THREADS
         )
+        save_file = input(save_file_prompt) or default_save_file
 
     create_config(
         aardvark_role=aardvark_role,
@@ -127,6 +128,7 @@ def config(
         sqlalchemy_track_modifications=False,
         num_threads=num_threads,
         region="us-east-1",
+        filename=save_file,
     )
 
 

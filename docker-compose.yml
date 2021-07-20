@@ -7,7 +7,7 @@ services:
     image: netflixoss/aardvark:latest
     volumes:
       - data:/data
-      - ./config.yaml:/etc/aardvark/config.yaml
+      - ./settings.local.yaml.bak:/etc/aardvark/settings.local.yaml.bak
     env_file: .env
     command: [ "aardvark", "create_db" ]
 
@@ -20,7 +20,7 @@ services:
       - 5000:5000
     volumes:
       - data:/data
-      - ./config.yaml:/etc/aardvark/config.yaml
+      - ./settings.local.yaml.bak:/etc/aardvark/settings.local.yaml.bak
     env_file: .env
     command: [ "flask", "run", "-h", "0.0.0.0", "-p", "5000" ]
 
@@ -32,9 +32,11 @@ services:
     restart: always
     volumes:
       - data:/data
-      - ./config.yaml:/etc/aardvark/config.yaml
+      - ./settings.local.yaml.bak:/etc/aardvark/settings.local.yaml.bak
     env_file: .env
-    command: [ "aardvark", "update", "-a", "$AARDVARK_ACCOUNTS" ]
+    command: [ "aardvark", "update" ]
+    # If you're not using SWAG, you'll need to specify one or more accounts here:
+    # command: [ "aardvark", "update", "-a", "123456789012", "-a", "234567890123" ]
 
 volumes:
   data:

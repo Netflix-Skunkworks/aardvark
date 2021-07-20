@@ -20,7 +20,7 @@ ENV AARDVARK_DATA_DIR=/data \
 
 EXPOSE 5000
 
-COPY ./config.yaml .
+COPY ./settings.yaml .
 COPY ./entrypoint.sh /etc/aardvark/entrypoint.sh
 
 ENTRYPOINT [ "/etc/aardvark/entrypoint.sh" ]
