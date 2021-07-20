@@ -106,5 +106,5 @@ ENV/
 .mypy_cache/
 
 # config
-config.py
-config.yaml
+.secrets.yaml
+settings.local.yaml

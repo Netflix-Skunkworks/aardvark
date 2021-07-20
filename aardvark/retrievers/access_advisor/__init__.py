@@ -69,10 +69,10 @@ class AccessAdvisorRetriever(RetrieverPlugin):
         account = self._get_account_from_arn(arn)
         conn_details: Dict[str, str] = {
             "account_number": account,
-            "assume_role": self.config["aws"]["rolename"],
+            "assume_role": self.config.get('aws_rolename'),
             "session_name": "aardvark",
-            "region": self.config["aws"]["region"] or "us-east-1",
-            "arn_partition": self.config["aws"]["arn_partition"] or "aws",
+            "region": self.config.get('aws_region', 'us-east-1'),
+            "arn_partition": self.config('aws_arn_partition', 'aws'),
         }
         iam_client = await sync_to_async(boto3_cached_conn)("iam", **conn_details)
         try:

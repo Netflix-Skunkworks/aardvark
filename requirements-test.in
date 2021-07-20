@@ -1,4 +1,3 @@
-cryptography
 flake8
 moto
 pytest

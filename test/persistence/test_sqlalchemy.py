@@ -34,26 +34,24 @@ ADVISOR_DATA = {
 @pytest.fixture(scope="function")
 def temp_sqlite_db_config():
     db_uri = "sqlite:///:memory:"
-    custom_config = DynaconfDict({
-        "sqlalchemy": {
-            "database_uri": str(db_uri)
-        },
-    })
-    custom_config["sqlalchemy"]["database_uri"] = db_uri
+    custom_config = DynaconfDict(
+        {
+            "sqlalchemy": {"database_uri": str(db_uri)},
+        }
+    )
+    custom_config["sqlalchemy_database_uri"] = db_uri
     return custom_config
 
 
-def test_sqlalchemypersistence(patch_config):
-    sap = SQLAlchemyPersistence(alternative_config=patch_config)
+def test_sqlalchemypersistence():
+    sap = SQLAlchemyPersistence()
     assert isinstance(sap, AardvarkPlugin)
     assert isinstance(sap, PersistencePlugin)
     assert sap.config
 
 
 def test_sqlalchemypersistence_custom_config():
-    custom_config = DynaconfDict({
-        "test_key": "test_value"
-    })
+    custom_config = DynaconfDict({"test_key": "test_value"})
     custom_config["test_key"] = "test_value"
     sap = SQLAlchemyPersistence(alternative_config=custom_config, initialize=False)
     assert isinstance(sap, AardvarkPlugin)

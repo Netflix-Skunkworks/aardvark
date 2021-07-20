@@ -6,9 +6,9 @@
 #
 attrs==21.2.0
     # via pytest
-boto3==1.17.112
+boto3==1.18.0
     # via moto
-botocore==1.20.112
+botocore==1.21.0
     # via
     #   boto3
     #   moto
@@ -17,12 +17,10 @@ certifi==2021.5.30
     # via requests
 cffi==1.14.6
     # via cryptography
-charset-normalizer==2.0.2
+charset-normalizer==2.0.3
     # via requests
 cryptography==3.4.7
-    # via
-    #   -r requirements-test.in
-    #   moto
+    # via moto
 flake8==3.9.2
     # via -r requirements-test.in
 idna==3.2
@@ -43,7 +41,7 @@ mccabe==0.6.1
     # via flake8
 more-itertools==8.8.0
     # via moto
-moto==2.0.11
+moto==2.1.0
     # via -r requirements-test.in
 packaging==21.0
     # via pytest
@@ -77,7 +75,7 @@ requests==2.26.0
     #   responses
 responses==0.13.3
     # via moto
-s3transfer==0.4.2
+s3transfer==0.5.0
     # via boto3
 six==1.16.0
     # via

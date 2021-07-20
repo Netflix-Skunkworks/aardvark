@@ -3,9 +3,7 @@ import pytest
 from typing import Any, Dict
 
 from dynaconf import Dynaconf
-from dynaconf.utils import DynaconfDict
 
-import aardvark.configuration
 from aardvark.retrievers import RetrieverPlugin
 from aardvark.retrievers.runner import RetrieverRunner
 
@@ -28,18 +26,18 @@ class FailingRetriever(RetrieverPlugin):
 
 
 @pytest.fixture(scope="function")
-def mock_retriever(patch_config):
-    return RetrieverStub(alternative_config=patch_config)
+def mock_retriever():
+    return RetrieverStub()
 
 
 @pytest.fixture(scope="function")
-def mock_failing_retriever(patch_config):
-    return FailingRetriever(alternative_config=patch_config)
+def mock_failing_retriever():
+    return FailingRetriever()
 
 
 @pytest.fixture(scope="function")
-def runner(patch_config):
-    return RetrieverRunner(alternative_config=patch_config)
+def runner():
+    return RetrieverRunner()
 
 
 @pytest.fixture(scope="function")

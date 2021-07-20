@@ -2,10 +2,11 @@ import logging
 import os.path
 from logging.config import dictConfig
 
+from dynaconf.contrib import FlaskDynaconf
 from flasgger import Swagger
 from flask import Flask
 
-from aardvark.configuration import settings
+from aardvark.config import settings
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 from aardvark.advisors import advisor_bp
 
@@ -13,17 +14,16 @@ BLUEPRINTS = [advisor_bp]
 
 API_VERSION = "1"
 
-dictConfig(settings["logging"])
 log = logging.getLogger("aardvark")
 
 
-def create_app(test_config=None):
+def create_app(*args, **kwargs):
+    init_logging()
     app = Flask(__name__, static_url_path="/static")
     Swagger(app)
     persistence = SQLAlchemyPersistence()
 
-    if test_config is not None:
-        app.config.update(test_config)
+    FlaskDynaconf(app, **kwargs)
 
     # For ELB and/or Eureka
     @app.route("/healthcheck")
@@ -45,6 +45,43 @@ def create_app(test_config=None):
     persistence.init_db()
 
     return app
+
+
+def init_logging():
+    log_cfg = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'standard': {
+                'format': '%(asctime)s %(levelname)s: %(message)s '
+                    '[in %(pathname)s:%(lineno)d]'
+            }
+        },
+        'handlers': {
+            'file': {
+                'class': 'logging.handlers.RotatingFileHandler',
+                'level': 'DEBUG',
+                'formatter': 'standard',
+                'filename': 'aardvark.log',
+                'maxBytes': 10485760,
+                'backupCount': 100,
+                'encoding': 'utf8'
+            },
+            'console': {
+                'class': 'logging.StreamHandler',
+                'level': 'DEBUG',
+                'formatter': 'standard',
+                'stream': 'ext://sys.stdout'
+            }
+        },
+        'loggers': {
+            'aardvark': {
+                'handlers': ['file', 'console'],
+                'level': 'DEBUG'
+            }
+        }
+    }
+    dictConfig(log_cfg)
 
 
 def _find_config():

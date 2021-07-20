@@ -1,5 +1,6 @@
 from dynaconf import Dynaconf
-from dynaconf import settings
+
+from aardvark.config import settings
 
 
 class AardvarkPlugin:

@@ -4,14 +4,15 @@ import logging
 import os
 import queue
 import threading
+from typing import List
 
-from aardvark import create_app
+from aardvark import create_app, init_logging
 from aardvark.exceptions import AardvarkException
-from aardvark.configuration import CONFIG, create_config, convert_config, find_legacy_config
+from aardvark.config import create_config, convert_config, find_legacy_config
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 from aardvark.retrievers.runner import RetrieverRunner
 
-app = create_app()
+APP = None
 log = logging.getLogger("aardvark")
 
 ACCOUNT_QUEUE = queue.Queue()
@@ -29,20 +30,27 @@ DEFAULT_AARDVARK_ROLE = "Aardvark"
 DEFAULT_NUM_THREADS = 5
 
 
+def get_app():
+    global APP
+    if not APP:
+        APP = create_app()
+    return APP
+
+
 @click.group()
 def cli():
-    pass
+    init_logging()
 
 
 # All of these default to None rather than the corresponding DEFAULT_* values
 # so we can tell whether they were passed or not. We don't prompt for any of
 # the options that were passed as parameters.
 @cli.command("config")
-@click.option('--aardvark-role', '-a', type=str)
-@click.option('--swag-bucket', '-b', type=str)
-@click.option('--db-uri', '-d', type=str)
-@click.option('--num-threads', type=int)
-@click.option('--no-prompt', is_flag=True, default=False)
+@click.option("--aardvark-role", "-a", type=str)
+@click.option("--swag-bucket", "-b", type=str)
+@click.option("--db-uri", "-d", type=str)
+@click.option("--num-threads", type=int)
+@click.option("--no-prompt", is_flag=True, default=False)
 def config(
     aardvark_role_param, bucket_param, db_uri_param, num_threads_param, no_prompt
 ):
@@ -123,16 +131,14 @@ def config(
 
 
 @cli.command("update")
-@click.option('--accounts', '-a', type=str, default='all')
-@click.option('--arns', '-r', type=str, default='all')
-def update(accounts, arns):
+@click.option("--account", "-a", type=str, default=[], multiple=True)
+@click.option("--arn", "-r", type=str, default=[], multiple=True)
+def update(account: List[str], arn: List[str]):
     """
     Asks AWS for new Access Advisor information.
     """
-    # The runner will default to all accounts and ARNs if None is passed in
-    accounts = None if accounts == "all" else accounts.split(",")
-    arns = None if arns == "all" else arns.split(",")
-
+    accounts = list(account)
+    arns = list(arn)
     r = RetrieverRunner()
     try:
         asyncio.run(r.run(accounts=accounts, arns=arns))
@@ -145,25 +151,30 @@ def update(accounts, arns):
 
 @cli.command("drop_db")
 def drop_db():
-    """ Drops the database. """
+    """Drops the database."""
     SQLAlchemyPersistence().teardown_db()
 
 
 @cli.command("create_db")
 def create_db():
-    """ Creates the database. """
+    """Creates the database."""
     SQLAlchemyPersistence().init_db()
 
 
 @cli.command("migrate_config")
-@click.option('--config-file', '-c', type=str)
-@click.option('--write/--no-write', type=bool, default=True)
-@click.option('--output-file', '-o', type=str)
-def migrate_config(config_file, write, output_file):
+@click.option("--environment", "-e", type=str, default="default")
+@click.option("--config-file", "-c", type=str)
+@click.option("--write/--no-write", type=bool, default=True)
+@click.option("--output-file", "-o", type=str, default="settings.yaml")
+def migrate_config(environment, config_file, write, output_file):
     if not config_file:
         config_file = find_legacy_config()
-    convert_config(config_file, write=write, output_filename=output_file)
-
+    convert_config(
+        config_file,
+        write=write,
+        output_filename=output_file,
+        environment=environment,
+    )
 
 
 if __name__ == "__main__":

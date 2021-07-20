@@ -1,0 +1,35 @@
+---
+development:
+  AWS_ARN_PARTITION: aws
+  AWS_REGION: us-east-1
+  AWS_ROLENAME: Aardvark
+  SQLALCHEMY_DATABASE_URI: "sqlite:///:memory:"
+  SQLALCHEMY_TRACK_MODIFICATIONS: false
+  UPDATER_NUM_THREADS: 1
+  SWAG:
+    bucket: "swag-bucket"
+    filter: ""
+    service_enabled_requirement: ""
+    opts:
+      swag.schema_version: 2
+      swag.type: "s3"
+      swag.bucket_name: "swag-bucket"
+      swag.data_file: "v2/accounts.json"
+      swag.region: "us-east-1"
+testing:
+  AWS_ARN_PARTITION: test
+  AWS_REGION: test
+  AWS_ROLENAME: test
+  SQLALCHEMY_DATABASE_URI: "sqlite:///:memory:"
+  SQLALCHEMY_TRACK_MODIFICATIONS: false
+  UPDATER_NUM_THREADS: 1
+  SWAG:
+    bucket: "swag-bucket"
+    filter: "mock swag filter"
+    service_enabled_requirement: "glowcloud"
+    opts:
+      swag.schema_version: 2
+      swag.type: "s3"
+      swag.bucket_name: "swag-bucket"
+      swag.data_file: "v2/accounts.json"
+      swag.region: "us-east-1"

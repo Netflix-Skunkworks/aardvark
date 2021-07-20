@@ -18,58 +18,67 @@ session_type = Union[scoped_session, Session]
 
 
 class SQLAlchemyPersistence(PersistencePlugin):
-    sa_engine: engine = None
-    session_factory: sessionmaker = None
+    sa_engine: engine
+    session_factory: sessionmaker
+    session: session_type
 
-    def __init__(
-        self, alternative_config: Dynaconf = None, initialize: bool = True
-    ):
+    def __init__(self, alternative_config: Dynaconf = None, initialize: bool = True):
         super().__init__(alternative_config=alternative_config)
         if initialize:
             self.init_db()
 
     def init_db(self):
-        self.sa_engine = create_engine(self.config["sqlalchemy"]["database_uri"])
+        self.sa_engine = create_engine(self.config.get("sqlalchemy_database_uri"))
         self.session_factory = sessionmaker(
             autocommit=False,
             autoflush=False,
             bind=self.sa_engine,
             expire_on_commit=False,
         )
-        session = self._create_session()
-        Base.query = session.query_property()
+        self.session = scoped_session(self.session_factory)
+        Base.query = self.session.query_property()
 
         Base.metadata.create_all(bind=self.sa_engine)
 
     def _create_session(self) -> scoped_session:
-        return scoped_session(self.session_factory)
+        return self.session()
 
     def teardown_db(self):
         Base.metadata.drop_all(bind=self.sa_engine)
 
     def create_iam_object(
-        self, arn: str, last_updated: datetime.datetime
+        self, arn: str, last_updated: datetime.datetime, session: session_type = None
     ) -> AWSIAMObject:
-        with self.session_scope() as session:
+        with self.session_scope(session) as session:
             item = AWSIAMObject(arn=arn, lastUpdated=last_updated)
             session.add(item)
         return item
 
     @contextmanager
-    def session_scope(self):
+    def session_scope(self, session: session_type = None):
         """Provide a transactional scope around a series of operations."""
-        session: session_type = self._create_session()
+        if not session:
+            log.debug("creating new SQLAlchemy DB session")
+            session: session_type = self._create_session()
+            close_session = True
+        else:
+            log.debug("using provided SQLAlchemy DB session")
+            close_session = False
         try:
             yield session
             log.debug("committing SQLAlchemy DB session")
             session.commit()
         except Exception as e:
-            log.debug("exception caught, rolling back session: %s", e)
+            log.warning("exception caught, rolling back session: %s", e, exc_info=True)
             session.rollback()
             raise
         finally:
-            log.debug("closing SQLAlchemy DB session")
-            session.close()
+            if close_session:
+                log.debug("closing SQLAlchemy DB session")
+                session.close()
+                self.session.remove()
+            else:
+                log.debug("not closing SQLAlchemy DB session")
 
     def _combine_results(self, access_advisor_data: Dict[str, Any]) -> Dict[str, Any]:
         access_advisor_data.pop("page")
@@ -109,8 +118,8 @@ class SQLAlchemyPersistence(PersistencePlugin):
 
         return usage
 
-    def store_role_data(self, access_advisor_data: Dict[str, Any]):
-        with self.session_scope() as session:
+    def store_role_data(self, access_advisor_data: Dict[str, Any], session: session_type = None):
+        with self.session_scope(session) as session:
             if not access_advisor_data:
                 log.warning(
                     "Cannot persist Access Advisor Data as no data was collected."
@@ -122,7 +131,7 @@ class SQLAlchemyPersistence(PersistencePlugin):
                 if arn in arn_cache:
                     item = arn_cache[arn]
                 else:
-                    item = self.get_or_create_iam_object(arn)
+                    item = self.get_or_create_iam_object(arn, session=session)
                     arn_cache[arn] = item
                 for service in data:
                     self.create_or_update_advisor_data(
@@ -147,8 +156,7 @@ class SQLAlchemyPersistence(PersistencePlugin):
     ) -> Dict[str, Any]:
         offset = (page - 1) * count if page else 0
         limit = count
-        items = None
-        with self.session_scope() as session:
+        with self.session_scope(session) as session:
             # default unfiltered query
             query = session.query(AWSIAMObject)
 
@@ -158,7 +166,9 @@ class SQLAlchemyPersistence(PersistencePlugin):
 
                 if arns:
                     query = query.filter(
-                        sa_func.lower(AWSIAMObject.arn).in_([arn.lower() for arn in arns])
+                        sa_func.lower(AWSIAMObject.arn).in_(
+                            [arn.lower() for arn in arns]
+                        )
                     )
 
                 if regex:
@@ -176,31 +186,31 @@ class SQLAlchemyPersistence(PersistencePlugin):
             except Exception as e:
                 raise DatabaseException("Could not retrieve roles from database: %s", e)
 
-        if not items:
-            items = session.query(AWSIAMObject).offset(offset).limit(limit).all()
+            if not items:
+                items = session.query(AWSIAMObject).offset(offset).limit(limit).all()
 
-        values = dict(page=page, total=total, count=len(items))
-        for item in items:
-            item_values = []
-            for advisor_data in item.usage:
-                item_values.append(
-                    dict(
-                        lastAuthenticated=advisor_data.lastAuthenticated,
-                        serviceName=advisor_data.serviceName,
-                        serviceNamespace=advisor_data.serviceNamespace,
-                        lastAuthenticatedEntity=advisor_data.lastAuthenticatedEntity,
-                        totalAuthenticatedEntities=advisor_data.totalAuthenticatedEntities,
-                        lastUpdated=item.lastUpdated,
+            values = dict(page=page, total=total, count=len(items))
+            for item in items:
+                item_values = []
+                for advisor_data in item.usage:
+                    item_values.append(
+                        dict(
+                            lastAuthenticated=advisor_data.lastAuthenticated,
+                            serviceName=advisor_data.serviceName,
+                            serviceNamespace=advisor_data.serviceNamespace,
+                            lastAuthenticatedEntity=advisor_data.lastAuthenticatedEntity,
+                            totalAuthenticatedEntities=advisor_data.totalAuthenticatedEntities,
+                            lastUpdated=item.lastUpdated,
+                        )
                     )
-                )
-            values[item.arn] = item_values
+                values[item.arn] = item_values
 
-        if combine and total > len(items):
-            raise CombineException(
-                "Error: Please specify a count of at least {}.".format(total)
-            )
-        elif combine:
-            return self._combine_results(values)
+            if combine and total > len(items):
+                raise CombineException(
+                    "Error: Please specify a count of at least {}.".format(total)
+                )
+            elif combine:
+                return self._combine_results(values)
 
         return values
 
@@ -214,85 +224,86 @@ class SQLAlchemyPersistence(PersistencePlugin):
         total_authenticated_entities: int,
         session: session_type = None,
     ):
-        session = session or self._create_session()
-        service_name = service_name[:128]
-        service_namespace = service_namespace[:64]
-        item = None
-        try:
-            item = (
-                session.query(AdvisorData)
-                .filter(AdvisorData.item_id == item_id)
-                .filter(AdvisorData.serviceNamespace == service_namespace)
-                .scalar()
-            )
-        except SQLAlchemyError as e:
-            log.error(
-                f"Database error: {e} item_id: {item_id} serviceNamespace: {service_namespace}"
-            )
-
-        if not item:
-            item = AdvisorData(
-                item_id=item_id,
-                lastAuthenticated=last_authenticated,
-                serviceName=service_name,
-                serviceNamespace=service_namespace,
-                lastAuthenticatedEntity=last_authenticated_entity,
-                totalAuthenticatedEntities=total_authenticated_entities,
-            )
+        with self.session_scope(session) as session:
+            service_name = service_name[:128]
+            service_namespace = service_namespace[:64]
+            item = None
             try:
-                session.add(item)
-            except SQLAlchemyError as e:
-                log.error(f"failed to add AdvisorData item to session: {e}")
-                raise
-            return
-
-        # sqlite will return a string for item.lastAuthenticated, so we parse that into a datetime
-        if isinstance(item.lastAuthenticated, str):
-            ts = datetime.datetime.strptime(
-                item.lastAuthenticated, "%Y-%m-%d %H:%M:%S.%f"
-            )
-        else:
-            ts = item.lastAuthenticated
-
-        if last_authenticated > ts:
-            item.lastAuthenticated = last_authenticated
-            try:
-                session.add(item)
-            except SQLAlchemyError as e:
-                log.error(f"failed to add AdvisorData item to session: {e}")
-                raise
-
-        elif last_authenticated < ts:
-            """
-            lastAuthenticated is obtained by calling get_service_last_accessed_details() method of the boto3 iam client.
-            When there is no AA data about a service, the lastAuthenticated key is missing from the returned dictionary.
-            This is perfectly valid, either because the service in question was not accessed in the past 365 days or
-            the entity granting  access to it was created recently enough that no AA data is available yet (it can take up to
-            4 hours for this to happen).
-            When this happens, the AccountToUpdate._get_job_results() method will set lastAuthenticated to 0.
-            Usually we don't want to persist such an entity, with one exception: there's already a recorded, non-zero lastAuthenticated
-            timestamp persisted for this item. That means the service was accessed at some point in time, but now more than 365 passed since
-            the last access, so AA no longer returns a timestamp for it.
-            """
-            if last_authenticated == 0:
-                log.warning(
-                    "Previously seen object not accessed in the past 365 days "
-                    "(got null lastAuthenticated from AA). Setting to 0. "
-                    f"Object {item.item_id} service {item.serviceName} previous timestamp {item.lastAuthenticated}"
+                item = (
+                    session.query(AdvisorData)
+                    .filter(AdvisorData.item_id == item_id)
+                    .filter(AdvisorData.serviceNamespace == service_namespace)
+                    .scalar()
                 )
-                item.lastAuthenticated = 0
+            except SQLAlchemyError as e:
+                log.error(
+                    f"Database error: {e} item_id: {item_id} serviceNamespace: {service_namespace}"
+                )
+                raise
+
+            if not item:
+                item = AdvisorData(
+                    item_id=item_id,
+                    lastAuthenticated=last_authenticated,
+                    serviceName=service_name,
+                    serviceNamespace=service_namespace,
+                    lastAuthenticatedEntity=last_authenticated_entity,
+                    totalAuthenticatedEntities=total_authenticated_entities,
+                )
                 try:
                     session.add(item)
                 except SQLAlchemyError as e:
                     log.error(f"failed to add AdvisorData item to session: {e}")
                     raise
-            else:
-                log.error(
-                    f"Received an older time than previously seen for object {item.item_id} service {item.serviceName} ({last_authenticated} < {item.lastAuthenticated})!"
-                )
+                return
 
-    def get_or_create_iam_object(self, arn: str):
-        with self.session_scope() as session:
+            # sqlite will return a string for item.lastAuthenticated, so we parse that into a datetime
+            if isinstance(item.lastAuthenticated, str):
+                ts = datetime.datetime.strptime(
+                    item.lastAuthenticated, "%Y-%m-%d %H:%M:%S.%f"
+                )
+            else:
+                ts = item.lastAuthenticated
+
+            if last_authenticated > ts:
+                item.lastAuthenticated = last_authenticated
+                try:
+                    session.add(item)
+                except SQLAlchemyError as e:
+                    log.error(f"failed to add AdvisorData item to session: {e}")
+                    raise
+
+            elif last_authenticated < ts:
+                """
+                lastAuthenticated is obtained by calling get_service_last_accessed_details() method of the boto3 iam client.
+                When there is no AA data about a service, the lastAuthenticated key is missing from the returned dictionary.
+                This is perfectly valid, either because the service in question was not accessed in the past 365 days or
+                the entity granting  access to it was created recently enough that no AA data is available yet (it can take up to
+                4 hours for this to happen).
+                When this happens, the AccountToUpdate._get_job_results() method will set lastAuthenticated to 0.
+                Usually we don't want to persist such an entity, with one exception: there's already a recorded, non-zero lastAuthenticated
+                timestamp persisted for this item. That means the service was accessed at some point in time, but now more than 365 passed since
+                the last access, so AA no longer returns a timestamp for it.
+                """
+                if last_authenticated == 0:
+                    log.warning(
+                        "Previously seen object not accessed in the past 365 days "
+                        "(got null lastAuthenticated from AA). Setting to 0. "
+                        f"Object {item.item_id} service {item.serviceName} previous timestamp {item.lastAuthenticated}"
+                    )
+                    item.lastAuthenticated = 0
+                    try:
+                        session.add(item)
+                    except SQLAlchemyError as e:
+                        log.error(f"failed to add AdvisorData item to session: {e}")
+                        raise
+                else:
+                    log.error(
+                        f"Received an older time than previously seen for object {item.item_id} service {item.serviceName} ({last_authenticated} < {item.lastAuthenticated})!"
+                    )
+
+    def get_or_create_iam_object(self, arn: str, session: session_type = None):
+        with self.session_scope(session) as session:
             try:
                 item = (
                     session.query(AWSIAMObject).filter(AWSIAMObject.arn == arn).scalar()
