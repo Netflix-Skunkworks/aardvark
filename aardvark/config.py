@@ -1,7 +1,7 @@
 import logging
 import os
 
-from dynaconf import Dynaconf
+from dynaconf import Dynaconf, Validator
 
 cwd_path = os.path.join(os.getcwd(), "settings.yaml")
 
@@ -15,6 +15,13 @@ settings = Dynaconf(
     ],
     env_switcher="AARDVARK_ENV",
     environments=True,
+    validators=[
+        Validator('AWS_ARN_PARTITION', default='aws'),
+        Validator('AWS_REGION', default='us-east-1'),
+        Validator('AWS_ARN_PARTITION', default='aws'),
+        Validator('SQLALCHEMY_DATABASE_URI', default='sqlite:///aardvark.db'),
+        Validator('UPDATER_NUM_THREADS', default=1),
+    ],
 )
 
 log = logging.getLogger(__name__)

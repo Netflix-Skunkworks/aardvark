@@ -1,5 +1,5 @@
 ---
-development:
+default:
   AWS_ARN_PARTITION: aws
   AWS_REGION: us-east-1
   AWS_ROLENAME: Aardvark
