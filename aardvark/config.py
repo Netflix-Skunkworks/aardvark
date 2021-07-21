@@ -164,9 +164,3 @@ def write_config(filename: str = "settings.yaml", environment: str = "default"):
     data = settings.as_dict()
     log.info("writing config file to %s", filename)
     loaders.write(filename, DynaBox(data).to_dict(), env=environment)
-
-
-# legacy_config_file = find_legacy_config()
-# if legacy_config_file:
-#     log.warning("legacy configuration file detected: %s", legacy_config_file)
-#     convert_config(legacy_config_file, write=True)

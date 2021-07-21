@@ -76,21 +76,21 @@ class RetrieverRunner(AardvarkPlugin):
             try:
                 data = await r.run(arn, data)
             except Exception as e:
-                log.error(f"failed to run {r} on ARN {arn}")
+                log.error("failed to run %s on ARN %s", r, arn)
                 raise RetrieverException from e
         return data
 
     async def _retriever_loop(self, name: str):
         """Loop to consume from self.arn_queue and call the retriever runner function."""
-        log.debug(f"creating {name}")
+        log.debug("creating %s", name)
         while True:
             log.debug("getting arn from queue")
             arn = await self.arn_queue.get()
-            log.debug(f"{name} retrieving data for {arn}")
+            log.debug("%s retrieving data for %s", name, arn)
             try:
                 data = await self._run_retrievers(arn)
             except Exception as e:
-                log.exception(f"failed to run retriever on ARN {arn}: {e}")
+                log.exception("failed to run retriever on ARN %s: %s", arn, str(e))
                 self.failed_arns.append(arn)
                 await self.failure_queue.put(arn)
                 self.arn_queue.task_done()
@@ -101,16 +101,16 @@ class RetrieverRunner(AardvarkPlugin):
 
     async def _results_loop(self, name: str):
         """Loop to consume from self.results_queue and handle results."""
-        log.debug(f"creating {name}")
+        log.debug("creating %s", name)
         while True:
             data = await self.results_queue.get()
-            log.debug(f"{name} storing results for {data['arn']}")
+            log.debug("%s storing results for %s", name, data['arn'])
             try:
                 await sync_to_async(self.persistence.store_role_data)(
                     {data["arn"]: data["access_advisor"]}
                 )
             except Exception as e:
-                log.exception("exception occurred in results loop: %s", e)
+                log.exception("exception occurred in results loop: %s", str(e))
                 await self.failure_queue.put(data)
             self.results_queue.task_done()
 
@@ -153,7 +153,7 @@ class RetrieverRunner(AardvarkPlugin):
             try:
                 await self._get_arns_for_account(account)
             except Exception as e:
-                log.exception("exception occurred in arn lookup loop: %s", e)
+                log.exception("exception occurred in arn lookup loop: %s", str(e))
                 await self.failure_queue.put(account)
             self.account_queue.task_done()
 
@@ -171,9 +171,9 @@ class RetrieverRunner(AardvarkPlugin):
                 all_accounts = await sync_to_async(self.swag.get_all)(search_filter=self.swag_config["filter"])
         except (KeyError, InvalidSWAGDataException, ClientError) as e:
             log.error(
-                f"Account names passed but SWAG not configured or unavailable: {e}"
+                "account names passed but SWAG not configured or unavailable: %s", str(e)
             )
-            raise RetrieverException("Could not retrieve SWAG data") from e
+            raise RetrieverException("could not retrieve SWAG data") from e
 
         return all_accounts
 
@@ -218,10 +218,10 @@ class RetrieverRunner(AardvarkPlugin):
 
     def cancel(self):
         """Send a cancel signal to all running workers."""
-        log.info("Stopping runner tasks")
+        log.info("stopping runner tasks")
         for task in self.tasks:
             task.cancel()
-            log.info(f"Task {task} canceled")
+            log.info("task %s canceled", task)
 
     async def run(self, accounts: List[str] = None, arns: List[str] = None):
         """Prep account queue and kick off ARN lookup, retriever, and results workers.
