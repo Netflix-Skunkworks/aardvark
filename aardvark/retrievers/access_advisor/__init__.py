@@ -4,7 +4,7 @@ import logging
 from typing import Any, Dict, Union
 
 from asgiref.sync import sync_to_async
-import confuse
+from dynaconf import Dynaconf
 from cloudaux.aws.sts import boto3_cached_conn
 
 from aardvark.exceptions import AccessAdvisorException
@@ -14,7 +14,7 @@ log = logging.getLogger("aardvark")
 
 
 class AccessAdvisorRetriever(RetrieverPlugin):
-    def __init__(self, alternative_config: confuse.Configuration = None):
+    def __init__(self, alternative_config: Dynaconf = None):
         super().__init__("access_advisor", alternative_config=alternative_config)
 
     async def _generate_service_last_accessed_details(self, iam_client, arn):
@@ -69,10 +69,10 @@ class AccessAdvisorRetriever(RetrieverPlugin):
         account = self._get_account_from_arn(arn)
         conn_details: Dict[str, str] = {
             "account_number": account,
-            "assume_role": self.config["aws"]["rolename"].as_str(),
+            "assume_role": self.config.get('aws_rolename'),
             "session_name": "aardvark",
-            "region": self.config["aws"]["region"].as_str() or "us-east-1",
-            "arn_partition": self.config["aws"]["arn_partition"].as_str() or "aws",
+            "region": self.config.get('aws_region', 'us-east-1'),
+            "arn_partition": self.config('aws_arn_partition', 'aws'),
         }
         iam_client = await sync_to_async(boto3_cached_conn)("iam", **conn_details)
         try:

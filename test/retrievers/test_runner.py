@@ -57,12 +57,17 @@ async def test_retriever_loop_failure(runner, mock_failing_retriever):
     runner.arn_queue = arn_queue
     results_queue = asyncio.Queue()
     runner.results_queue = results_queue
+    failure_queue = asyncio.Queue()
+    runner.failure_queue = failure_queue
     task = asyncio.create_task(runner._retriever_loop(""))
     await arn_queue.join()
     task.cancel()
     assert len(runner.failed_arns) == 1
     assert runner.failed_arns[0] == "abc123"
     assert runner.results_queue.empty()
+    assert not runner.failure_queue.empty()
+    failed = await runner.failure_queue.get()
+    assert failed == "abc123"
 
 
 @pytest.mark.asyncio
@@ -72,13 +77,12 @@ async def test_results_loop(runner, mock_retriever):
     await results_queue.put({"arn": "abc123", "access_advisor": {"access": "advised"}})
     runner.results_queue = results_queue
     expected = {"abc123": {"access": "advised"}}
-    with patch("aardvark.retrievers.runner.sap") as sap:
-        sap.store_role_data = MagicMock()
-        task = asyncio.create_task(runner._results_loop(""))
-        await runner.results_queue.join()
-        task.cancel()
-        sap.store_role_data.assert_called()
-        sap.store_role_data.assert_called_with(expected)
+    runner.persistence.store_role_data = MagicMock()
+    task = asyncio.create_task(runner._results_loop(""))
+    await runner.results_queue.join()
+    task.cancel()
+    runner.persistence.store_role_data.assert_called()
+    runner.persistence.store_role_data.assert_called_with(expected)
 
 
 @patch("aardvark.retrievers.runner.boto3_cached_conn")
@@ -136,12 +140,9 @@ async def test_arn_lookup_loop(mock_get_arns_for_account, runner):
 
 
 @pytest.mark.asyncio
-async def test_get_swag_accounts(mock_config):
-    mock_config["swag"]["opts"] = {}
-    mock_config["swag"]["filter"] = "mock swag filter"
-    mock_config["swag"]["service_enabled_requirement"] = "glowcloud"
+async def test_get_swag_accounts():
     swag_response = {"foo": "bar"}
-    runner = RetrieverRunner(alternative_config=mock_config)
+    runner = RetrieverRunner()
     runner.swag = MagicMock()
     runner.swag.get_all.return_value = swag_response
     runner.swag.get_service_enabled.return_value = swag_response
@@ -154,12 +155,9 @@ async def test_get_swag_accounts(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_get_swag_accounts_failure(mock_config):
-    mock_config["swag"]["opts"] = {}
-    mock_config["swag"]["filter"] = "mock swag filter"
-    mock_config["swag"]["service_enabled_requirement"] = "glowcloud"
+async def test_get_swag_accounts_failure():
     swag_response = {"foo": "bar"}
-    runner = RetrieverRunner(alternative_config=mock_config)
+    runner = RetrieverRunner()
     runner.swag = MagicMock()
     runner.swag.get_all.side_effect = InvalidSWAGDataException
     runner.swag.get_service_enabled.return_value = swag_response
@@ -224,8 +222,8 @@ async def test_queue_arns(runner):
 
 
 @pytest.mark.asyncio
-async def test_run(mock_config):
-    runner = RetrieverRunner(alternative_config=mock_config)
+async def test_run():
+    runner = RetrieverRunner()
     runner._queue_accounts = AsyncMock()
     runner._queue_arns = AsyncMock()
     runner._queue_all_accounts = AsyncMock()
@@ -243,8 +241,8 @@ async def test_run(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_run_with_accounts(mock_config):
-    runner = RetrieverRunner(alternative_config=mock_config)
+async def test_run_with_accounts():
+    runner = RetrieverRunner()
     runner._queue_accounts = AsyncMock()
     runner._queue_arns = AsyncMock()
     runner._queue_all_accounts = AsyncMock()
@@ -262,8 +260,8 @@ async def test_run_with_accounts(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_run_with_arns(mock_config):
-    runner = RetrieverRunner(alternative_config=mock_config)
+async def test_run_with_arns():
+    runner = RetrieverRunner()
     runner._queue_accounts = AsyncMock()
     runner._queue_arns = AsyncMock()
     runner._queue_all_accounts = AsyncMock()

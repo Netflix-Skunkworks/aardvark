@@ -1,18 +1,18 @@
 import asyncio
+import click
 import logging
 import os
 import queue
 import threading
+from typing import List
 
-from flask_script import Command, Manager, Option
-
-from aardvark import create_app
+from aardvark import create_app, init_logging
 from aardvark.exceptions import AardvarkException
-from aardvark.configuration import CONFIG, create_config
+from aardvark.config import create_config, convert_config, find_legacy_config
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 from aardvark.retrievers.runner import RetrieverRunner
 
-manager = Manager(create_app)
+APP = None
 log = logging.getLogger("aardvark")
 
 ACCOUNT_QUEUE = queue.Queue()
@@ -30,17 +30,28 @@ DEFAULT_AARDVARK_ROLE = "Aardvark"
 DEFAULT_NUM_THREADS = 5
 
 
+def get_app():
+    global APP
+    if not APP:
+        APP = create_app()
+    return APP
+
+
+@click.group()
+def cli():
+    init_logging()
+
+
 # All of these default to None rather than the corresponding DEFAULT_* values
 # so we can tell whether they were passed or not. We don't prompt for any of
 # the options that were passed as parameters.
-@manager.option("-a", "--aardvark-role", dest="aardvark_role_param", type=str)
-@manager.option("-b", "--swag-bucket", dest="bucket_param", type=str)
-@manager.option("-d", "--db-uri", dest="db_uri_param", type=str)
-@manager.option("--num-threads", dest="num_threads_param", type=int)
-@manager.option("--no-prompt", dest="no_prompt", action="store_true", default=False)
-def config(
-    aardvark_role_param, bucket_param, db_uri_param, num_threads_param, no_prompt
-):
+@cli.command("config")
+@click.option("--aardvark-role", "-a", type=str)
+@click.option("--swag-bucket", "-b", type=str)
+@click.option("--db-uri", "-d", type=str)
+@click.option("--num-threads", type=int)
+@click.option("--no-prompt", is_flag=True, default=False)
+def config(aardvark_role, swag_bucket, db_uri, num_threads, no_prompt):
     """
     Creates a config.py configuration file from user input or default values.
 
@@ -69,41 +80,44 @@ def config(
     """
     # We don't set these until runtime.
     default_db_uri = f"{LOCALDB}:///{os.getcwd()}/{DEFAULT_LOCALDB_FILENAME}"
+    default_save_file = "settings.local.yaml"
 
     if no_prompt:  # Just take the parameters as currently constituted.
-        aardvark_role = aardvark_role_param or DEFAULT_AARDVARK_ROLE
-        num_threads = num_threads_param or DEFAULT_NUM_THREADS
-        db_uri = db_uri_param or default_db_uri
+        aardvark_role = aardvark_role or DEFAULT_AARDVARK_ROLE
+        num_threads = num_threads or DEFAULT_NUM_THREADS
+        db_uri = db_uri or default_db_uri
 
         # If a swag bucket was specified we set write_swag here so it gets
         # written out to the config file below.
-        bucket = bucket_param or DEFAULT_SWAG_BUCKET
+        bucket = swag_bucket or DEFAULT_SWAG_BUCKET
 
     else:
         # This is essentially the same "param, or input, or default"
         # structure as the additional parameters below.
-        if bucket_param:
-            bucket = bucket_param
+        if swag_bucket:
+            bucket = swag_bucket
         else:
             print(f"\nAardvark can use SWAG to look up accounts. See {SWAG_REPO_URL}")
             use_swag = input("Do you use SWAG to track accounts? [yN]: ")
             if len(use_swag) > 0 and "yes".startswith(use_swag.lower()):
-                bucket_prompt = f"SWAG_BUCKET [{DEFAULT_SWAG_BUCKET}]: "
+                bucket_prompt = f"SWAG bucket [{DEFAULT_SWAG_BUCKET}]: "
                 bucket = input(bucket_prompt) or DEFAULT_SWAG_BUCKET
             else:
                 bucket = ""
 
-        aardvark_role_prompt = f"ROLENAME [{DEFAULT_AARDVARK_ROLE}]: "
-        db_uri_prompt = f"DATABASE URI [{default_db_uri}]: "
-        num_threads_prompt = f"# THREADS [{DEFAULT_NUM_THREADS}]: "
+        aardvark_role_prompt = f"Role Name [{DEFAULT_AARDVARK_ROLE}]: "
+        db_uri_prompt = f"Database URI [{default_db_uri}]: "
+        num_threads_prompt = f"Worker Count [{DEFAULT_NUM_THREADS}]: "
+        save_file_prompt = f"Config file location [{default_save_file}]: "
 
         aardvark_role = (
-            aardvark_role_param or input(aardvark_role_prompt) or DEFAULT_AARDVARK_ROLE
+                aardvark_role or input(aardvark_role_prompt) or DEFAULT_AARDVARK_ROLE
         )
-        db_uri = db_uri_param or input(db_uri_prompt) or default_db_uri
+        db_uri = db_uri or input(db_uri_prompt) or default_db_uri
         num_threads = (
-            num_threads_param or input(num_threads_prompt) or DEFAULT_NUM_THREADS
+                num_threads or input(num_threads_prompt) or DEFAULT_NUM_THREADS
         )
+        save_file = input(save_file_prompt) or default_save_file
 
     create_config(
         aardvark_role=aardvark_role,
@@ -114,19 +128,19 @@ def config(
         sqlalchemy_track_modifications=False,
         num_threads=num_threads,
         region="us-east-1",
+        filename=save_file,
     )
 
 
-@manager.option("-a", "--accounts", dest="accounts", type=str, default="all")
-@manager.option("-r", "--arns", dest="arns", type=str, default="all")
-def update(accounts, arns):
+@cli.command("update")
+@click.option("--account", "-a", type=str, default=[], multiple=True)
+@click.option("--arn", "-r", type=str, default=[], multiple=True)
+def update(account: List[str], arn: List[str]):
     """
     Asks AWS for new Access Advisor information.
     """
-    # The runner will default to all accounts and ARNs if None is passed in
-    accounts = None if accounts == "all" else accounts.split(",")
-    arns = None if arns == "all" else arns.split(",")
-
+    accounts = list(account)
+    arns = list(arn)
     r = RetrieverRunner()
     try:
         asyncio.run(r.run(accounts=accounts, arns=arns))
@@ -137,69 +151,33 @@ def update(accounts, arns):
         exit(1)
 
 
-class GunicornServer(Command):
-    """
-    This is the main GunicornServer server, it runs the flask app with gunicorn and
-    uses any configuration options passed to it.
-    You can pass all standard gunicorn flags to this command as if you were
-    running gunicorn itself.
-    For example:
-    aardvark start_api -w 4 -b 127.0.0.0:8002
-    Will start gunicorn with 4 workers bound to 127.0.0.0:8002
-    """
-
-    description = "Run the app within Gunicorn"
-
-    def get_options(self):
-        options = []
-        try:
-            from gunicorn.config import make_settings
-        except ImportError:
-            # Gunicorn does not yet support Windows.
-            # See issue #524. https://github.com/benoitc/gunicorn/issues/524
-            # For dev on Windows, make this an optional import.
-            print("Could not import gunicorn, skipping.")
-            return options
-
-        settings = make_settings()
-        for setting, klass in settings.items():
-            if klass.cli:
-                if klass.action:
-                    if klass.action == "store_const":
-                        options.append(
-                            Option(*klass.cli, const=klass.const, action=klass.action)
-                        )
-                    else:
-                        options.append(Option(*klass.cli, action=klass.action))
-                else:
-                    options.append(Option(*klass.cli))
-        return options
-
-    def run(self, *args, **kwargs):
-        from gunicorn.app.wsgiapp import WSGIApplication
-
-        app = WSGIApplication()
-
-        app.app_uri = "aardvark:create_app()"
-        return app.run()
-
-
-@manager.command
+@cli.command("drop_db")
 def drop_db():
-    """ Drops the database. """
+    """Drops the database."""
     SQLAlchemyPersistence().teardown_db()
 
 
-@manager.command
+@cli.command("create_db")
 def create_db():
-    """ Creates the database. """
+    """Creates the database."""
     SQLAlchemyPersistence().init_db()
 
 
-def main():
-    manager.add_command("start_api", GunicornServer())
-    manager.run()
+@cli.command("migrate_config")
+@click.option("--environment", "-e", type=str, default="default")
+@click.option("--config-file", "-c", type=str)
+@click.option("--write/--no-write", type=bool, default=True)
+@click.option("--output-file", "-o", type=str, default="settings.yaml")
+def migrate_config(environment, config_file, write, output_file):
+    if not config_file:
+        config_file = find_legacy_config()
+    convert_config(
+        config_file,
+        write=write,
+        output_filename=output_file,
+        environment=environment,
+    )
 
 
 if __name__ == "__main__":
-    main()
+    cli()

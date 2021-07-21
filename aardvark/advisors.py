@@ -1,26 +1,11 @@
-# ensure absolute import for python3
-from __future__ import absolute_import
-
 from flask import Blueprint, abort, jsonify, request
 
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 
 advisor_bp = Blueprint("advisor", __name__)
-session = SQLAlchemyPersistence()._create_session()
 
 
-@advisor_bp.teardown_request
-def shutdown_session(exception=None):
-    session.remove()
-
-
-# undocumented convenience pass-through so we can query directly from browser
-@advisor_bp.route("/advisors")
-def get():
-    return post()
-
-
-@advisor_bp.route("/advisors")
+@advisor_bp.route("/advisors", methods=["GET", "POST"])
 def post():
     """Get access advisor data for role(s)
     Returns access advisor information for role(s) that match filters
@@ -120,7 +105,6 @@ def post():
         phrase=phrase,
         arns=arns,
         regex=regex,
-        session=session,
     )
 
     return jsonify(values)

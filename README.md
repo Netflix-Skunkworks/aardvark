@@ -9,17 +9,26 @@ Aardvark is a multi-account AWS IAM Access Advisor API (and caching layer).
 
 ## New in `v1.0.0`
 
-⚠️: Breaking change
-✨: Enhancement
+⚠️ Breaking change 
 
-- ✨ Pluggable persistence layer
-- ✨ Pluggable retrievers
+✨ Enhancement
+
 - ⚠️ Upgrade to Python 3.8+
 - ⚠️ New configuration format
+- ✨ Pluggable persistence layer
+- ✨ Pluggable retrievers
 
-## Install:
+## Install
 
 Ensure that you have Python 3.8 or later.
+
+Use pip install Aardvark:
+
+```bash
+pip install aardvark
+```
+
+Alternatively, clone the repository and install a development version:
 
 ```bash
 git clone https://github.com/Netflix-Skunkworks/aardvark.git
@@ -33,19 +42,21 @@ python setup.py develop
 
 The Aardvark config wizard will guide you through the setup.
 ```bash
-% aardvark config
+❯ aardvark config
 
-Aardvark can use SWAG to look up accounts. https://github.com/Netflix-Skunkworks/swag-client
-Do you use SWAG to track accounts? [yN]: no
-ROLENAME: Aardvark
-DATABASE [sqlite:////home/github/aardvark/aardvark.db]:
-# Threads [5]:
+Aardvark can use SWAG to look up accounts. See https://github.com/Netflix-Skunkworks/swag-client
+Do you use SWAG to track accounts? [yN]: N
+Role Name [Aardvark]: Aardvark
+Database URI [sqlite:///aardvark.db]: 
+Worker Count [5]: 5
+Config file location [settings.yaml]: settings.local.yaml
 
->> Writing to config.py
+writing config file to settings.local.yaml
 ```
 - Whether to use [SWAG](https://github.com/Netflix-Skunkworks/swag-client) to enumerate your AWS accounts. (Optional, but useful when you have many accounts.)
 - The name of the IAM Role to assume into in each account.
 - The Database connection string. (Defaults to sqlite in the current working directory. Use RDS Postgres for production.)
+- The number of workers to create.
 
 ## Create the DB tables
 
@@ -57,27 +68,95 @@ aardvark create_db
 
 Aardvark needs an IAM Role in each account that will be queried.  Additionally, Aardvark needs to be launched with a role or user which can `sts:AssumeRole` into the different account roles.
 
-AardvarkInstanceProfile:
-- Only create one.
-- Needs the ability to call `sts:AssumeRole` into all of the AardvarkRole's
+### Hub role (`AardvarkInstanceProfile`):
 
-AardvarkRole:
+- Only create one.
+- Needs the ability to call `sts:AssumeRole` into all of the `AardvarkRole`s
+
+Inline policy example:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AssumeSpokeRoles",
+            "Effect": "Allow",
+            "Action": [
+                "sts:assumerole"
+            ],
+            "Resource": [
+                "arn:aws:iam::*:role/AardvarkRole"
+            ]
+        }
+    ]
+}
+```
+
+### Spoke roles (`AardvarkRole`):
+
 - Must exist in every account to be monitored.
 - Must have a trust policy allowing `AardvarkInstanceProfile`.
 - Has these permissions:
+
 ```
 iam:GenerateServiceLastAccessedDetails
 iam:GetServiceLastAccessedDetails
-iam:listrolepolicies
-iam:listroles
+iam:ListRolePolicies
+iam:ListRoles
 iam:ListUsers
 iam:ListPolicies
 iam:ListGroups
 ```
+Assume role policy document example (be sure to replace the account ID with a real one):
 
-So if you are monitoring `n` accounts, you will always need `n+1` roles. (`n` AardvarkRoles and `1` AardvarkInstanceProfile).
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowHubRoleAssume",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::111111111111:role/AardvarkInstanceProfile"
+                ]
+            },
+            "Action": "sts:AssumeRole"
+        }
+    ]
+}
+```
 
-Note: For locally running aardvark, you don't have to take care of the AardvarkInstanceProfile. Instead, just attach a policy which contains "sts:AssumeRole" to the user you are using on the AWS CLI to assume Aardvark Role. Also, the same user should be mentioned in the trust policy of Aardvark Role for proper assignment of the privileges.
+Inline policy example:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "IAMAccess",
+            "Effect": "Allow",
+            "Action": [
+              "iam:GenerateServiceLastAccessedDetails",
+              "iam:GetServiceLastAccessedDetails",
+              "iam:ListRolePolicies",
+              "iam:ListRoles",
+              "iam:ListUsers",
+              "iam:ListPolicies",
+              "iam:ListGroups"
+            ],
+            "Resource": [
+              "*"
+            ]
+        }
+    ]
+}
+```
+
+So if you are monitoring `n` accounts, you will always need `n+1` roles. (one `AardvarkInstanceProfile` and n `AardvarkRole`s).
+
+Note: For locally running aardvark, you don't have to take care of the AardvarkInstanceProfile. Instead, just attach a policy which contains `sts:AssumeRole` to the user you are using on the AWS CLI to assume Aardvark Role. Also, the same user should be mentioned in the trust policy of Aardvark Role for proper assignment of the privileges.
 
 ## Gather Access Advisor Data
 
@@ -87,24 +166,30 @@ You'll likely want to refresh the Access Advisor data regularly.  We recommend r
 
 If you don't have SWAG you can pass comma separated account numbers:
 
-    aardvark update -a 123456789012,210987654321
+    aardvark update -a 123456789012 -a 210987654321
 
 #### With SWAG:
 
 Aardvark can use [SWAG](https://github.com/Netflix-Skunkworks/swag-client) to look up accounts, so you can run against all with:
 
-    aardvark update
+```bash
+aardvark update
+```
 
 or by account name/tag with:
 
-    aardvark update -a dev,test,prod
+```bash
+aardvark update -a dev -a test -a prod
+```
 
 
 ## API
 
 ### Start the API
 
-    aardvark start_api -b 0.0.0.0:5000
+```bash
+FLASK_APP=aardvark flask run -b 0.0.0.0:5000
+```
 
 In production, you'll likely want to have something like supervisor starting the API for you.
 

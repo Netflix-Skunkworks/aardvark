@@ -193,7 +193,9 @@ def test_run(mock_boto3_cached_conn, event_loop, arn, data, expected):
 
 @pytest.mark.parametrize("arn,data,expected", [("arn", {}, {})])
 @patch("aardvark.retrievers.access_advisor.boto3_cached_conn")
-def test_run_missing_arn(mock_boto3_cached_conn, event_loop, arn, data, expected):
+def test_run_missing_arn(
+    mock_boto3_cached_conn, event_loop, arn, data, expected
+):
     mock_iam_client = MagicMock()
     mock_iam_client.exceptions.NoSuchEntityException = Exception
     mock_iam_client.generate_service_last_accessed_details.side_effect = (

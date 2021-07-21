@@ -2,14 +2,14 @@ import os
 import pytest
 from typing import Any, Dict
 
-import confuse
+from dynaconf import Dynaconf
 
 from aardvark.retrievers import RetrieverPlugin
 from aardvark.retrievers.runner import RetrieverRunner
 
 
 class RetrieverStub(RetrieverPlugin):
-    def __init__(self, alternative_config: confuse.Configuration = None):
+    def __init__(self, alternative_config: Dynaconf = None):
         super().__init__("retriever_stub", alternative_config=alternative_config)
 
     async def run(self, arn: str, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -18,7 +18,7 @@ class RetrieverStub(RetrieverPlugin):
 
 
 class FailingRetriever(RetrieverPlugin):
-    def __init__(self, alternative_config: confuse.Configuration = None):
+    def __init__(self, alternative_config: Dynaconf = None):
         super().__init__("retriever_stub", alternative_config=alternative_config)
 
     async def run(self, arn: str, data: Dict[str, Any]) -> Dict[str, Any]:
