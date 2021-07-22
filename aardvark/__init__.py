@@ -1,40 +1,32 @@
-#ensure absolute import for python3
-from __future__ import absolute_import
-
-import os.path
 import logging
-from logging import DEBUG, Formatter, StreamHandler
+import os.path
 from logging.config import dictConfig
-import sys
 
-from flask_sqlalchemy import SQLAlchemy
-from flask import Flask
+from dynaconf.contrib import FlaskDynaconf
 from flasgger import Swagger
+from flask import Flask
 
-db = SQLAlchemy()
+from aardvark.config import settings
+from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
+from aardvark.advisors import advisor_bp
 
-from aardvark.view import mod as advisor_bp  # noqa
+BLUEPRINTS = [advisor_bp]
 
-BLUEPRINTS = [
-    advisor_bp
-]
+API_VERSION = "1"
 
-API_VERSION = '1'
+log = logging.getLogger("aardvark")
 
 
-def create_app():
-    app = Flask(__name__, static_url_path='/static')
+def create_app(*args, **kwargs):
+    init_logging()
+    app = Flask(__name__, static_url_path="/static")
     Swagger(app)
+    persistence = SQLAlchemyPersistence()
 
-    path = _find_config()
-    if not path:
-        print('No config')
-        app.config.from_pyfile('_config.py')
-    else:
-        app.config.from_pyfile(path)
+    FlaskDynaconf(app, **kwargs)
 
     # For ELB and/or Eureka
-    @app.route('/healthcheck')
+    @app.route("/healthcheck")
     def healthcheck():
         """Healthcheck
         Simple healthcheck that indicates the services is up
@@ -43,42 +35,63 @@ def create_app():
           200:
             description: service is up
         """
-        return 'ok'
+        return "ok"
 
     # Blueprints
     for bp in BLUEPRINTS:
         app.register_blueprint(bp, url_prefix="/api/{0}".format(API_VERSION))
 
     # Extensions:
-    db.init_app(app)
-    setup_logging(app)
+    persistence.init_db()
 
     return app
 
 
+def init_logging():
+    log_cfg = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'standard': {
+                'format': '%(asctime)s %(levelname)s: %(message)s '
+                    '[in %(pathname)s:%(lineno)d]'
+            }
+        },
+        'handlers': {
+            'file': {
+                'class': 'logging.handlers.RotatingFileHandler',
+                'level': 'DEBUG',
+                'formatter': 'standard',
+                'filename': 'aardvark.log',
+                'maxBytes': 10485760,
+                'backupCount': 100,
+                'encoding': 'utf8'
+            },
+            'console': {
+                'class': 'logging.StreamHandler',
+                'level': 'DEBUG',
+                'formatter': 'standard',
+                'stream': 'ext://sys.stdout'
+            }
+        },
+        'loggers': {
+            'aardvark': {
+                'handlers': ['file', 'console'],
+                'level': 'DEBUG'
+            }
+        }
+    }
+    dictConfig(log_cfg)
+
+
 def _find_config():
     """Search for config.py in order of preference and return path if it exists, else None"""
-    CONFIG_PATHS = [os.path.join(os.getcwd(), 'config.py'),
-                    '/etc/aardvark/config.py',
-                    '/apps/aardvark/config.py']
+    CONFIG_PATHS = [
+        os.path.join(os.getcwd(), "config.py"),
+        "/etc/aardvark/config.py",
+        "/apps/aardvark/config.py",
+    ]
     for path in CONFIG_PATHS:
         if os.path.exists(path):
             return path
     return None
-
-
-def setup_logging(app):
-    if not app.debug:
-        if app.config.get('LOG_CFG'):
-            # initialize the Flask logger (removes all handlers)
-            app.logger
-            dictConfig(app.config.get('LOG_CFG'))
-            app.logger = logging.getLogger(__name__)
-        else:
-            handler = StreamHandler(stream=sys.stderr)
-
-            handler.setFormatter(Formatter(
-                '%(asctime)s %(levelname)s: %(message)s '
-                '[in %(pathname)s:%(lineno)d]'))
-            app.logger.setLevel(app.config.get('LOG_LEVEL', DEBUG))
-            app.logger.addHandler(handler)

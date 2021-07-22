@@ -1,0 +1,12 @@
+asgiref
+blinker
+bunch
+click
+cloudaux
+confuse
+dynaconf
+flasgger
+flask
+SQLAlchemy
+swag_client
+toml
