@@ -90,7 +90,7 @@ def config(aardvark_role, swag_bucket, db_uri, num_threads, no_prompt):
         # If a swag bucket was specified we set write_swag here so it gets
         # written out to the config file below.
         bucket = swag_bucket or DEFAULT_SWAG_BUCKET
-
+        save_file = default_save_file
     else:
         # This is essentially the same "param, or input, or default"
         # structure as the additional parameters below.
