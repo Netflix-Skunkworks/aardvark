@@ -25,18 +25,18 @@ with open(os.path.join(ROOT, "aardvark", "__about__.py")) as f:
 
 
 install_requires = [
-    'requests>=2.9.1',
+    'requests~=2.22.0',
     'better_exceptions==0.1.7',
-    'blinker>=1.4',
+    'blinker~=1.4',
     'Bunch==1.0.1',
-    'Flask-SQLAlchemy==2.2',
-    'cloudaux>=1.2.0',
+    'Flask-SQLAlchemy~=2.5',
+    'cloudaux>=1.8.0',
     'Flask==1.0.2',
     'Flask-RESTful==0.3.5',
     'Flask-Script==2.0.5',
     'flasgger==0.6.3',
     'gunicorn==19.7.1',
-    'psycopg2~=2.7.4',
+    'psycopg2-binary~=2.9.3',
     'pytz==2017.2',
     'swag-client==0.4.6',
     'tqdm==4.40.0',
