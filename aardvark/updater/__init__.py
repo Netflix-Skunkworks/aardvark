@@ -93,6 +93,7 @@ class AccountToUpdate(object):
 
             result_arns.add(arn)
 
+        self.current_app.logger.debug("got %d arns", len(result_arns))
         return list(result_arns)
 
     def _get_client(self):
@@ -119,18 +120,25 @@ class AccountToUpdate(object):
         jobs = self._generate_job_ids(iam, arns)
         details = self._get_job_results(iam, jobs)
         if arns and not details:
-            self.current_app.error("Didn't get any results from Access Advisor")
+            self.current_app.logger.error("Didn't get any results from Access Advisor")
         return details
 
     @rate_limited()
     def _generate_service_last_accessed_details(self, iam, arn):
         """ Wrapping the actual AWS API calls for rate limiting protection. """
+        self.current_app.logger.debug('generating last accessed details for role %s', arn)
         return iam.generate_service_last_accessed_details(Arn=arn)['JobId']
 
     @rate_limited()
-    def _get_service_last_accessed_details(self, iam, job_id):
+    def _get_service_last_accessed_details(self, iam, job_id, marker=None):
         """ Wrapping the actual AWS API calls for rate limiting protection. """
-        return iam.get_service_last_accessed_details(JobId=job_id)
+        self.current_app.logger.debug('getting last accessed details for job %s', job_id)
+        params = {
+            'JobId': job_id,
+        }
+        if marker:
+            params['Marker'] = marker
+        return iam.get_service_last_accessed_details(**params)
 
     def _generate_job_ids(self, iam, arns):
         jobs = {}
@@ -194,19 +202,29 @@ class AccountToUpdate(object):
             last_job_completion_time = time.time()
             updated_list = []
 
-            for detail in details.get('ServicesLastAccessed'):
-                # create a copy, we're going to modify the time to epoch
-                updated_item = copy.copy(detail)
+            while True:
+                for detail in details.get('ServicesLastAccessed'):
+                    # create a copy, we're going to modify the time to epoch
+                    updated_item = copy.copy(detail)
 
-                # AWS gives a datetime, convert to epoch
-                last_auth = detail.get('LastAuthenticated')
-                if last_auth:
-                    last_auth = int(time.mktime(last_auth.timetuple()) * 1000)
+                    # AWS gives a datetime, convert to epoch
+                    last_auth = detail.get('LastAuthenticated')
+                    if last_auth:
+                        last_auth = int(time.mktime(last_auth.timetuple()) * 1000)
+                    else:
+                        last_auth = 0
+
+                    updated_item['LastAuthenticated'] = last_auth
+                    updated_list.append(updated_item)
+                if details.get('Truncated', False):
+                    try:
+                        details = self._get_service_last_accessed_details(iam, job_id, marker=details.get('Marker'))
+                    except Exception as e:
+                        self.on_error.send(self, error=e)
+                        self.current_app.logger.error('Could not gather data from {0}.'.format(role_arn), exc_info=True)
+                        break
                 else:
-                    last_auth = 0
-
-                updated_item['LastAuthenticated'] = last_auth
-                updated_list.append(updated_item)
+                    break
 
             access_details[role_arn] = updated_list
 
