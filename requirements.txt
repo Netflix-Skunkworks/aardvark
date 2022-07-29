@@ -37,7 +37,7 @@ lazy-object-proxy==1.4.2
 MarkupSafe==1.1.1
 marshmallow==2.20.5
 mccabe==0.6.1
-mistune==0.8.4
+mistune==2.0.3
 more-itertools==7.2.0
 pexpect==4.7.0
 psycopg2-binary==2.9.3
