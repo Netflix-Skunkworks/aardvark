@@ -35,7 +35,7 @@ install_requires = [
     'Jinja2==3.0.3',
     'Flask-RESTful==0.3.5',
     'Flask-Script==2.0.5',
-    'flasgger==0.6.3',
+    'flasgger==0.9.5',
     'gunicorn==19.7.1',
     'itsdangerous==2.0.1',
     'psycopg2-binary~=2.9.3',
