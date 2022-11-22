@@ -1,7 +1,7 @@
 language: python
 cache: pip
 python:
-- 3.7
+- 3.9
 matrix:
   allow_failures:
   - python: nightly
