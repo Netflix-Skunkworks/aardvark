@@ -37,7 +37,7 @@ install_requires = [
     'Flask-Script==2.0.5',
     'flasgger==0.9.5',
     'gunicorn==19.7.1',
-    'itsdangerous==2.0.1',
+    'itsdangerous==1.1.0',
     'psycopg2-binary~=2.9.3',
     'pytz==2017.2',
     'swag-client==0.4.6',
