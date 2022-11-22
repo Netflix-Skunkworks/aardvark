@@ -24,7 +24,7 @@ Flask-Script==2.0.5
 Flask-SQLAlchemy>=2.5
 gunicorn==19.7.1
 idna==2.8
-importlib-metadata==0.23
+importlib-metadata
 inflection==0.3.1
 isort==4.3.21
 itsdangerous==1.1.0
