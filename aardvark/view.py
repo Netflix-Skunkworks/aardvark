@@ -3,7 +3,6 @@ from __future__ import absolute_import
 
 import better_exceptions  # noqa
 import datetime
-import json
 
 from flask import abort, jsonify
 from flask import Blueprint
@@ -32,7 +31,7 @@ class RoleSearch(Resource):
         del aa['page']
         del aa['total']
 
-        usage = dict()
+        usage = {}
         for arn, services in aa.items():
             for service in services:
                 namespace = service.get('serviceNamespace')
