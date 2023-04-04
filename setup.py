@@ -24,26 +24,21 @@ with open(os.path.join(ROOT, "aardvark", "__about__.py")) as f:
     exec(f.read(), about)
 
 
-install_requires = [
-    'requests~=2.22.0',
-    'better_exceptions==0.1.7',
-    'blinker~=1.4',
-    'Bunch==1.0.1',
-    'Flask-SQLAlchemy~=2.5',
-    'cloudaux>=1.8.0',
-    'Flask==1.0.2',
-    'Jinja2==3.0.3',
-    'Flask-RESTful==0.3.5',
-    'Flask-Script==2.0.5',
-    'flasgger==0.9.5',
-    'gunicorn==19.7.1',
-    'itsdangerous==1.1.0',
-    'psycopg2-binary~=2.9.3',
-    'pytz==2017.2',
-    'swag-client==0.4.6',
-    'tqdm==4.40.0',
-    'deepdiff==3.3.0'  # Pinning to last py2 compatible version. Needed for swag-client.
-]
+def read(*paths):
+    """Read the contents of a text file safely."""
+    rootpath = os.path.dirname(__file__)
+    filepath = os.path.join(rootpath, *paths)
+    with open(filepath, encoding="utf-8") as file_:
+        return file_.read().strip()
+    
+
+def read_requirements(path):
+    """Return a list of requirements from a text file"""
+    return [
+        line.strip()
+        for line in read(path).split("\n")
+        if not line.startswith(("#", "git+", '"', "-"))
+    ]
 
 tests_require = [
     'pexpect>=4.2.1'
@@ -68,7 +63,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
-    install_requires=install_requires,
+    install_requires=[ read_requirements("requirements.txt") ],
     extras_require={
         'tests': tests_require,
         'docs': docs_require,
