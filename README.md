@@ -16,7 +16,7 @@ git clone https://github.com/Netflix-Skunkworks/aardvark.git
 cd aardvark
 python3 -m venv env
 . env/bin/activate
-python setup.py develop
+python setup.py install
 ```
 
 ### Known Dependencies
