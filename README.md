@@ -145,6 +145,7 @@ Once this file is created, then build the containers and start the services. Aar
 - Collector - This is a daemon that will fetch and cache the data in the local SQL database. This should be run periodically.
 
 ### Docker Way
+
 ```bash
 git clone https://github.com/Netflix-Skunkworks/aardvark
 cd aardvark
