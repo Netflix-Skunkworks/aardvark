@@ -216,7 +216,7 @@ class AccountToUpdate(object):
 
                     updated_item['LastAuthenticated'] = last_auth
                     updated_list.append(updated_item)
-                if details.get('Truncated', False):
+                if details.get('IsTruncated', True):
                     try:
                         details = self._get_service_last_accessed_details(iam, job_id, marker=details.get('Marker'))
                     except Exception as e:
