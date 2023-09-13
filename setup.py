@@ -25,11 +25,11 @@ with open(os.path.join(ROOT, "aardvark", "__about__.py")) as f:
 
 
 install_requires = [
-    'requests~=2.22.0',
+    'requests==2.31.0',
     'better_exceptions==0.1.7',
     'blinker~=1.4',
     'Bunch==1.0.1',
-    'Flask-SQLAlchemy~=2.5',
+    'Flask-SQLAlchemy>=2.5',
     'cloudaux>=1.8.0',
     'Flask==1.0.2',
     'Jinja2==3.0.3',
@@ -78,5 +78,6 @@ setup(
         'console_scripts': [
             'aardvark = aardvark.manage:main',
         ],
-    }
+    },
+    python_requires=">=3.7",
 )
