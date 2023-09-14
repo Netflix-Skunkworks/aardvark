@@ -17,7 +17,7 @@ defusedxml==0.6.0
 docutils==0.15.2
 dogpile.cache==0.8.0
 flagpole==1.1.1
-flasgger==0.6.3
+flasgger==0.9.5
 Flask==1.0.2
 Flask-RESTful==0.3.5
 Flask-Script==2.0.5
@@ -34,7 +34,7 @@ joblib==0.14.0
 jsonpickle==1.2
 jsonschema==3.1.1
 lazy-object-proxy==1.4.2
-MarkupSafe==1.1.1
+MarkupSafe
 marshmallow==2.20.5
 mccabe==0.6.1
 mistune==0.8.4
