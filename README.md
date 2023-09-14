@@ -16,6 +16,7 @@ git clone https://github.com/Netflix-Skunkworks/aardvark.git
 cd aardvark
 python3 -m venv env
 . env/bin/activate
+pip3 install -r requirements.txt
 python setup.py develop
 ```
 
@@ -143,12 +144,17 @@ Once this file is created, then build the containers and start the services. Aar
 - API Server - This is the HTTP webserver will serve the data. By default, this is listening on [http://localhost:5000/apidocs/#!](http://localhost:5000/apidocs/#!).
 - Collector - This is a daemon that will fetch and cache the data in the local SQL database. This should be run periodically.
 
-```bash
-# build the containers
-docker-compose build
+### Docker Way
 
-# start up the containers
-docker-compose up
+```bash
+git clone https://github.com/Netflix-Skunkworks/aardvark
+cd aardvark
+docker run -it --rm -v $(pwd):/opt python:3.9 /bin/bash
+cd /opt/
+python3 -m venv env
+. env/bin/activate
+pip3 install -r requirements.txt
+python3 setup.py develop
 ```
 
 Finally, to clean up the environment
