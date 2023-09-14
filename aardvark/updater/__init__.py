@@ -1,13 +1,20 @@
 # ensure absolute import for python3
 from __future__ import absolute_import
 
-import copy
 import time
 
 from blinker import Signal
 from cloudaux.aws.iam import list_roles, list_users
 from cloudaux.aws.sts import boto3_cached_conn
 from cloudaux.aws.decorators import rate_limited
+
+
+class JobNotComplete(Exception):
+    pass
+
+
+class JobFailed(Exception):
+    pass
 
 
 class AccountToUpdate(object):
@@ -118,7 +125,7 @@ class AccountToUpdate(object):
 
     def _call_access_advisor(self, iam, arns):
         jobs = self._generate_job_ids(iam, arns)
-        details = self._get_job_results(iam, jobs)
+        details = self._process_jobs(iam, jobs)
         if arns and not details:
             self.current_app.logger.error("Didn't get any results from Access Advisor")
         return details
@@ -154,7 +161,39 @@ class AccountToUpdate(object):
                 self.current_app.logger.error('Could not gather data from {0}.'.format(role_arn), exc_info=True)
         return jobs
 
-    def _get_job_results(self, iam, jobs):
+    def _get_job_results(self, iam, job_id, role_arn):
+        last_accessed_details = []
+        marker = None  # Marker is used for pagination
+        while True:
+            try:
+                response = self._get_service_last_accessed_details(iam, job_id, marker=marker)
+            except Exception as e:
+                self.on_error.send(self, error=e)
+                self.current_app.logger.error(f'Could not gather data for role {role_arn}.', exc_info=True)
+                raise
+
+            # Check job status. Possible values are IN_PROGRESS, COMPLETED, and FAILED.
+            if response['JobStatus'] == 'IN_PROGRESS':
+                raise JobNotComplete()
+            elif response['JobStatus'] == 'FAILED':
+                message = response.get("Error", {}).get("Message", "Unknown error")
+                raise JobFailed(message)
+
+            # Status should only be COMPLETED if we've made it this far.
+            if response['JobStatus'] != 'COMPLETED':
+                raise Exception(f"Unknown job status {response['JobStatus']}")
+
+            # Add results to list
+            last_accessed_details.extend(response.get('ServicesLastAccessed', []))
+
+            # Check for pagination token, save it to marker if it exists
+            if response.get('IsTruncated', False):
+                marker = response.get('Marker')
+            else:
+                break
+        return last_accessed_details
+
+    def _process_jobs(self, iam, jobs):
         access_details = {}
         job_queue = list(jobs.keys())
         last_job_completion_time = time.time()
@@ -172,59 +211,38 @@ class AccountToUpdate(object):
             job_id = job_queue.pop()
             role_arn = jobs[job_id]
             try:
-                details = self._get_service_last_accessed_details(iam, job_id)
-            except Exception as e:
-                self.on_error.send(self, error=e)
-                self.current_app.logger.error('Could not gather data from {0}.'.format(role_arn), exc_info=True)
-                continue
-
-            # Check job status
-            if details['JobStatus'] == 'IN_PROGRESS':
+                last_accessed_details = self._get_job_results(iam, job_id, role_arn)
+            except JobNotComplete:
                 job_queue.append(job_id)
                 continue
-
-            # Check for job failure
-            if details['JobStatus'] != 'COMPLETED':
-                log_str = "Job {job_id} finished with unexpected status {status} for ARN {arn}.".format(
-                    job_id=job_id,
-                    status=details['JobStatus'],
-                    arn=role_arn)
+            except JobFailed as e:
+                log_str = f"Job {job_id} for ARN {role_arn} failed: {e}"
 
                 failing_arns = self.current_app.config.get('FAILING_ARNS', {})
                 if role_arn in failing_arns:
                     self.current_app.logger.info(log_str)
                 else:
                     self.current_app.logger.error(log_str)
-
+                continue
+            except Exception as e:
+                self.on_error.send(self, error=e)
+                self.current_app.logger.error('Could not gather data from {0}.'.format(role_arn), exc_info=True)
                 continue
 
             # Job status must be COMPLETED. Save result.
             last_job_completion_time = time.time()
             updated_list = []
 
-            while True:
-                for detail in details.get('ServicesLastAccessed'):
-                    # create a copy, we're going to modify the time to epoch
-                    updated_item = copy.copy(detail)
-
-                    # AWS gives a datetime, convert to epoch
-                    last_auth = detail.get('LastAuthenticated')
-                    if last_auth:
-                        last_auth = int(time.mktime(last_auth.timetuple()) * 1000)
-                    else:
-                        last_auth = 0
-
-                    updated_item['LastAuthenticated'] = last_auth
-                    updated_list.append(updated_item)
-                if details.get('Truncated', False):
-                    try:
-                        details = self._get_service_last_accessed_details(iam, job_id, marker=details.get('Marker'))
-                    except Exception as e:
-                        self.on_error.send(self, error=e)
-                        self.current_app.logger.error('Could not gather data from {0}.'.format(role_arn), exc_info=True)
-                        break
+            for detail in last_accessed_details:
+                # AWS gives a datetime, convert to epoch
+                last_auth = detail.get('LastAuthenticated')
+                if last_auth:
+                    last_auth = int(time.mktime(last_auth.timetuple()) * 1000)
                 else:
-                    break
+                    last_auth = 0
+
+                detail['LastAuthenticated'] = last_auth
+                updated_list.append(detail)
 
             access_details[role_arn] = updated_list
 
