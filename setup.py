@@ -1,17 +1,15 @@
-"""
-Aardvark
-=====
+"""Aardvark.
+
 Multi-Account AWS IAM Access Advisor API
 :copyright: (c) 2017 by Netflix
 :license: Apache, see LICENSE for more details.
 """
 from __future__ import absolute_import
 
-import sys
 import os.path
+import sys
 
-from setuptools import setup, find_packages
-
+from setuptools import find_packages, setup
 
 ROOT = os.path.realpath(os.path.join(os.path.dirname(__file__)))
 
@@ -24,36 +22,28 @@ with open(os.path.join(ROOT, "aardvark", "__about__.py")) as f:
     exec(f.read(), about)
 
 
-install_requires = [
-    'requests~=2.22.0',
-    'better_exceptions==0.1.7',
-    'blinker~=1.4',
-    'Bunch==1.0.1',
-    'Flask-SQLAlchemy~=2.5',
-    'cloudaux>=1.8.0',
-    'Flask==1.0.2',
-    'Jinja2==3.0.3',
-    'Flask-RESTful==0.3.5',
-    'Flask-Script==2.0.5',
-    'flasgger==0.9.5',
-    'gunicorn==19.7.1',
-    'itsdangerous==1.1.0',
-    'psycopg2-binary~=2.9.3',
-    'pytz==2017.2',
-    'swag-client==0.4.6',
-    'tqdm==4.40.0',
-    'deepdiff==3.3.0'  # Pinning to last py2 compatible version. Needed for swag-client.
-]
+def read(*paths):
+    """Read the contents of a text file safely."""
+    rootpath = os.path.dirname(__file__)
+    filepath = os.path.join(rootpath, *paths)
+    with open(filepath, encoding="utf-8") as file_:
+        return file_.read().strip()
 
-tests_require = [
-    'pexpect>=4.2.1'
-]
 
-docs_require = [
-]
+def read_requirements(path):
+    """Return a list of requirements from a text file."""
+    return [
+        line.strip()
+        for line in read(path).split("\n")
+        if not line.startswith(("#", "git+", '"', "-"))
+    ]
 
-dev_requires = [
-]
+
+tests_require = ["pexpect>=4.2.1"]
+
+docs_require = []
+
+dev_requires = []
 
 
 setup(
@@ -63,20 +53,20 @@ setup(
     author_email=about["__email__"],
     url=about["__uri__"],
     description=about["__summary__"],
-    long_description=open(os.path.join(ROOT, 'README.md')).read(),
+    long_description=open(os.path.join(ROOT, "README.md")).read(),
     long_description_content_type="text/markdown",
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
-    install_requires=install_requires,
+    install_requires=[read_requirements("requirements.txt")],
     extras_require={
-        'tests': tests_require,
-        'docs': docs_require,
-        'dev': dev_requires,
+        "tests": tests_require,
+        "docs": docs_require,
+        "dev": dev_requires,
     },
     entry_points={
-        'console_scripts': [
-            'aardvark = aardvark.manage:main',
+        "console_scripts": [
+            "aardvark = aardvark.manage:main",
         ],
-    }
+    },
 )
