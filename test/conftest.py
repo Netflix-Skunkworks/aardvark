@@ -4,6 +4,9 @@ from flask_sqlalchemy import SQLAlchemy
 
 @pytest.fixture(scope="function")
 def app_config():
+    """Return a Flask configuration object for testing. The returned configuration is intended to be a good base for
+    testing and can be customized for specific testing needs.
+    """
     from flask import Config
     c = Config('.')
     c.from_mapping({
@@ -16,7 +19,10 @@ def app_config():
 
 
 @pytest.fixture(scope="function")
-def mock_database(monkeypatch, app_config):
+def mock_database(app_config):
+    """Yield an instance of flask_sqlalchemy.SQLAlchemy associated with the base model class used in aardvark.model.
+    This is almost certainly not safe for parallel/multi-threaded use.
+    """
     from aardvark import db
     mock_db = SQLAlchemy(model_class=db.Model)
 
