@@ -25,7 +25,7 @@ jobs:
           echo TODO
       - name: Test
         run: |
-          hatch run +py=${{ matrix.python-version }} pytest
+          hatch run +py=${{ matrix.python-version }} test:pytest
       - name: Build dist
         run: |
           hatch build
