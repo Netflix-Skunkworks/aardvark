@@ -119,11 +119,10 @@ class AdvisorData(db.Model):
             if lastAuthenticated == 0:
                 current_app.logger.info(
                     'Previously seen object not accessed in the past 365 days (got null lastAuthenticated from AA). '
-                    'Setting to 0. Object {} service {} previous timestamp {}'.format(
-                        item.item_id,
-                        item.serviceName,
-                        item.lastAuthenticated
-                    )
+                    'Setting to 0. Object %s service %s previous timestamp %d',
+                    item.item_id,
+                    item.serviceName,
+                    item.lastAuthenticated
                 )
             else:
                 current_app.logger.warning(

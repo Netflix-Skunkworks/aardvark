@@ -1,4 +1,4 @@
-def test_advisor_data_create(database):
+def test_advisor_data_create(mock_database):
     from aardvark.model import AdvisorData, db
     AdvisorData.create_or_update(
         9999,
@@ -24,7 +24,7 @@ def test_advisor_data_create(database):
     assert record.totalAuthenticatedEntities == 1
 
 
-def test_advisor_data_update(database):
+def test_advisor_data_update(mock_database):
     from aardvark.model import AdvisorData, db
     AdvisorData.create_or_update(
         9999,
@@ -64,7 +64,7 @@ def test_advisor_data_update(database):
     assert record.totalAuthenticatedEntities == 1
 
 
-def test_advisor_data_update_older_last_authenticated(database):
+def test_advisor_data_update_older_last_authenticated(mock_database):
     from aardvark.model import AdvisorData, db
     AdvisorData.create_or_update(
         9999,
@@ -103,3 +103,44 @@ def test_advisor_data_update_older_last_authenticated(database):
     assert record.serviceName == "Pink Pony Club"
     assert record.serviceNamespace == "roan"
     assert record.totalAuthenticatedEntities == 1
+
+
+def test_advisor_data_update_zero_last_authenticated(mock_database):
+    from aardvark.model import AdvisorData, db
+    AdvisorData.create_or_update(
+        9999,
+        1111,
+        "Pink Pony Club",
+        "roan",
+        "chappell",
+        1,
+    )
+    db.session.commit()
+
+    record: AdvisorData = db.session.query(AdvisorData).filter(
+        AdvisorData.id == 1,
+        ).scalar()
+    assert record
+    assert record.lastAuthenticated == 1111
+
+    # Calling create_or_update with a zero lastAuthenticated value SHOULD update lastAuthenticated in the DB
+    AdvisorData.create_or_update(
+        9999,
+        0,
+        "Pink Pony Club",
+        "roan",
+        "",
+        0,
+    )
+    db.session.commit()
+
+    record: AdvisorData = db.session.query(AdvisorData).filter(
+        AdvisorData.id == 1,
+        ).scalar()
+    assert record
+    assert record.item_id == 9999
+    assert record.lastAuthenticated == 0
+    assert record.lastAuthenticatedEntity == ""
+    assert record.serviceName == "Pink Pony Club"
+    assert record.serviceNamespace == "roan"
+    assert record.totalAuthenticatedEntities == 0
