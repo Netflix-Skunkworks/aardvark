@@ -24,24 +24,31 @@ Ensure that you have Python 3.8 or later.
 
 Use pip install Aardvark:
 
-```bash
+```shell
 pip install aardvark
 ```
 
 Alternatively, clone the repository and install a development version:
 
-```bash
+```shell
 git clone https://github.com/Netflix-Skunkworks/aardvark.git
 cd aardvark
-python3 -m venv env
-. env/bin/activate
-python setup.py develop
+python3 -m venv venv
+source venv/bin/activate
+pip install -e .
+```
+
+To run the test suite, you'll need to install the test requirements:
+
+```shell
+pip install .[tests]
+pytest test/
 ```
 
 ## Configure Aardvark
 
 The Aardvark config wizard will guide you through the setup.
-```bash
+```shell
 ❯ aardvark config
 
 Aardvark can use SWAG to look up accounts. See https://github.com/Netflix-Skunkworks/swag-client
@@ -60,7 +67,7 @@ writing config file to settings.local.yaml
 
 ## Create the DB tables
 
-```bash
+```shell
 aardvark create_db
 ```
 
@@ -172,13 +179,13 @@ If you don't have SWAG you can pass comma separated account numbers:
 
 Aardvark can use [SWAG](https://github.com/Netflix-Skunkworks/swag-client) to look up accounts, so you can run against all with:
 
-```bash
+```shell
 aardvark update
 ```
 
 or by account name/tag with:
 
-```bash
+```shell
 aardvark update -a dev -a test -a prod
 ```
 
@@ -187,7 +194,7 @@ aardvark update -a dev -a test -a prod
 
 ### Start the API
 
-```bash
+```shell
 FLASK_APP=aardvark flask run -b 0.0.0.0:5000
 ```
 
@@ -198,7 +205,7 @@ In production, you'll likely want to have something like supervisor starting the
 Swagger is available for the API at `<Aardvark_Host>/apidocs/#!`.
 
 Aardvark responds to get/post requests. All results are paginated and pagination can be controlled by passing `count` and/or `page` arguments. Here are a few example queries:
-```bash
+```shell
 curl localhost:5000/api/1/advisors
 curl localhost:5000/api/1/advisors?phrase=SecurityMonkey
 curl localhost:5000/api/1/advisors?arn=arn:aws:iam::000000000000:role/SecurityMonkey&arn=arn:aws:iam::111111111111:role/SecurityMonkey
@@ -235,7 +242,7 @@ Once this file is created, then build the containers and start the services. Aar
 - API Server - This is the HTTP webserver will serve the data. By default, this is listening on [http://localhost:5000/apidocs/#!](http://localhost:5000/apidocs/#!).
 - Collector - This is a daemon that will fetch and cache the data in the local SQL database. This should be run periodically.
 
-```bash
+```shell
 # build the containers
 docker-compose build
 
@@ -245,7 +252,7 @@ docker-compose up
 
 Finally, to clean up the environment
 
-```bash
+```shell
 # bring down the containers
 docker-compose down
 
@@ -301,7 +308,7 @@ if __name__ == "__main__":
 
 This file can now be invoked in the same way as `manage.py`:
 
-```bash
+```shell
 python signals_example.py update -a cool_account
 ```
 
@@ -322,7 +329,3 @@ INFO: Thread #1 FINISHED persisting data for account 123456789012
 |-------|---------|
 | `manage.UpdateAccountThread` | `on_ready`, `on_complete`, `on_failure` |
 | `updater.AccountToUpdate` | `on_ready`, `on_complete`, `on_error`, `on_failure` |
-
-## TODO:
-
-See [TODO](TODO.md)
