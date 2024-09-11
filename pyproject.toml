@@ -1,0 +1,69 @@
+[build-system]
+requires = [
+  "hatchling >=1.12.2",
+  "hatch-vcs >=0.2.0",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "aardvark"
+description = "A multi-account AWS IAM Access Advisor API"
+readme = "README.md"
+authors = [{name = "Netflix", email = "aardvark-maintainers@netflix.com"}]
+license = {file = "LICENSE"}
+requires-python = ">=3.8"
+dependencies = [
+    "asgiref",
+    "blinker",
+    "click",
+    "cloudaux",
+    "confuse",
+    "dynaconf",
+    "flasgger",
+    "flask",
+    "SQLAlchemy",
+    "swag_client",
+    "toml",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = [
+    "flake8",
+    "pytest",
+    "pytest-asyncio",
+]
+dev = [
+    "aardvark[test]",
+    "setuptools",
+]
+
+[project.urls]
+repository = "https://github.com/Netflix-Skunkworks/aardvark"
+
+[project.scripts]
+aardvark = "aardvark.manage:cli"
+
+[tool.hatch.version]
+source = "vcs"
+scheme = "standard"
+
+[tool.hatch.version.raw-options]
+local_scheme = "dirty-tag"
+
+[tool.hatch.build]
+include = ["aardvark"]
+
+[tool.hatch.build.hooks.vcs]
+version-file = "aardvark/__version__.py"
+
+[wheel]
+universal = 1
+
+[egg_info]
+tag_build = ""
+tag_date = 0
+tag_svn_revision = 0
+
+[flake8]
+max-line-length = 121
