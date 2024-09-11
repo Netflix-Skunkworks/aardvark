@@ -1,6 +1,5 @@
 asgiref
 blinker
-bunch
 click
 cloudaux
 confuse
