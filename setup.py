@@ -12,10 +12,4 @@ setup(
     versioning="dev",
     setup_requires="setupmeta",
     entry_points={"console_scripts": ["aardvark = aardvark.manage:cli"]},
-    extras_require={
-        "tests": [
-            "pytest",
-            "pytest-asyncio",
-        ]
-    }
 )

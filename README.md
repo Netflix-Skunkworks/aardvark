@@ -41,7 +41,7 @@ pip install -e .
 To run the test suite, you'll need to install the test requirements:
 
 ```shell
-pip install .[tests]
+pip install -r requirements-test.txt
 pytest test/
 ```
 
