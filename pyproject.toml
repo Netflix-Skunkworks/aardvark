@@ -38,32 +38,21 @@ dev = [
     "setuptools",
 ]
 
-[project.urls]
-repository = "https://github.com/Netflix-Skunkworks/aardvark"
-
 [project.scripts]
 aardvark = "aardvark.manage:cli"
 
-[tool.hatch.version]
-source = "vcs"
-scheme = "standard"
-
-[tool.hatch.version.raw-options]
-local_scheme = "dirty-tag"
+[project.urls]
+repository = "https://github.com/Netflix-Skunkworks/aardvark"
 
 [tool.hatch.build]
-include = ["aardvark"]
+include = ["aardvark", "README.md", "LICENSE", "aardvark/config_default.yaml"]
 
 [tool.hatch.build.hooks.vcs]
 version-file = "aardvark/__version__.py"
 
-[wheel]
-universal = 1
-
-[egg_info]
-tag_build = ""
-tag_date = 0
-tag_svn_revision = 0
+[tool.hatch.version]
+source = "vcs"
+scheme = "standard"
 
 [flake8]
 max-line-length = 121
