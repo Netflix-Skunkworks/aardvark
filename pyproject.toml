@@ -50,6 +50,9 @@ include = ["aardvark", "README.md", "LICENSE", "aardvark/config_default.yaml"]
 [tool.hatch.build.hooks.vcs]
 version-file = "aardvark/__version__.py"
 
+[[tool.hatch.envs.test.matrix]]
+python = ["3.8", "3.9", "3.10", "3.11"]
+
 [tool.hatch.version]
 source = "vcs"
 scheme = "standard"

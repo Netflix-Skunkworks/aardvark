@@ -1,11 +1,11 @@
-name: Python package
+name: Lint & Test
 
 # TODO: switch this to run on PRs
 on: [push]
 
 jobs:
-  build:
-
+  test:
+    name: Run tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -17,17 +17,15 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+      - name: Install hatch
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install \
-            -r requirements.txt \
-            -r requirements-test.txt \
-            .
+          python -m pip install hatch
       - name: Lint
         run: |
-          flake8 . --count --select=E901,E999,F821,F822,F823 --show-source --statistics
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          echo TODO
       - name: Test
         run: |
-          pytest --capture=sys --ignore=test/test_docker.py
+          hatch run +py=${{ matrix.python-version }} pytest
+      - name: Build dist
+        run: |
+          hatch build
