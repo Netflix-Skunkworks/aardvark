@@ -1,11 +1,7 @@
 name: Publish
 
 on:
-  workflow_run:
-    workflows:
-      - Build
-    types:
-      - completed
+  push:
     branches:
       - develop
 
