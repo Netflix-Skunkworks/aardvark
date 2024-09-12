@@ -31,7 +31,7 @@ ADVISOR_DATA = {
 }
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def temp_sqlite_db_config():
     db_uri = "sqlite:///:memory:"
     custom_config = DynaconfDict(

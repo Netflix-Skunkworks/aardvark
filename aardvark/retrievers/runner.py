@@ -13,9 +13,9 @@ from swag_client import InvalidSWAGDataException
 from swag_client.backend import SWAGManager
 from swag_client.util import parse_swag_config_options
 
-from aardvark.exceptions import RetrieverException
-from aardvark.plugins import AardvarkPlugin
+from aardvark.exceptions import RetrieverError
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
+from aardvark.plugins import AardvarkPlugin
 from aardvark.retrievers import RetrieverPlugin
 from aardvark.retrievers.access_advisor import AccessAdvisorRetriever
 
@@ -77,7 +77,7 @@ class RetrieverRunner(AardvarkPlugin):
                 data = await r.run(arn, data)
             except Exception as e:
                 log.error("failed to run %s on ARN %s", r, arn)
-                raise RetrieverException from e
+                raise RetrieverError from e
         return data
 
     async def _retriever_loop(self, name: str):
@@ -173,7 +173,7 @@ class RetrieverRunner(AardvarkPlugin):
             log.error(
                 "account names passed but SWAG not configured or unavailable: %s", str(e)
             )
-            raise RetrieverException("could not retrieve SWAG data") from e
+            raise RetrieverError("could not retrieve SWAG data") from e
 
         return all_accounts
 

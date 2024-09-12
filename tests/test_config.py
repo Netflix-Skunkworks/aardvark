@@ -18,7 +18,7 @@ def test_create_config(temp_config_file):
         environment="testtesttest",
     )
 
-    with open(temp_config_file, "r") as f:
+    with open(temp_config_file) as f:
         file_data = yaml.safe_load(f)
 
     assert file_data["testtesttest"]["AWS_ROLENAME"] == "role"

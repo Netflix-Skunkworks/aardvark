@@ -1,18 +1,18 @@
-class AardvarkException(Exception):
+class AardvarkError(Exception):
     pass
 
 
-class AccessAdvisorException(AardvarkException):
+class AccessAdvisorError(AardvarkError):
     pass
 
 
-class CombineException(AardvarkException):
+class CombineError(AardvarkError):
     pass
 
 
-class DatabaseException(AardvarkException):
+class DatabaseError(AardvarkError):
     pass
 
 
-class RetrieverException(AardvarkException):
+class RetrieverError(AardvarkError):
     pass

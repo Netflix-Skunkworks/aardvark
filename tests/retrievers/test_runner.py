@@ -1,10 +1,10 @@
 import asyncio
-import pytest
-from unittest.mock import patch, MagicMock, AsyncMock, call
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
+import pytest
 from swag_client.exceptions import InvalidSWAGDataException
 
-from aardvark.exceptions import RetrieverException
+from aardvark.exceptions import RetrieverError
 from aardvark.retrievers.runner import RetrieverRunner
 
 
@@ -26,7 +26,7 @@ async def test_run_retrievers(runner, mock_retriever):
 @pytest.mark.asyncio
 async def test_run_retrievers_failure(runner, mock_failing_retriever):
     runner.register_retriever(mock_failing_retriever)
-    with pytest.raises(RetrieverException):
+    with pytest.raises(RetrieverError):
         await runner._run_retrievers("abc123")
 
 
@@ -161,7 +161,7 @@ async def test_get_swag_accounts_failure():
     runner.swag = MagicMock()
     runner.swag.get_all.side_effect = InvalidSWAGDataException
     runner.swag.get_service_enabled.return_value = swag_response
-    with pytest.raises(RetrieverException):
+    with pytest.raises(RetrieverError):
         await runner._get_swag_accounts()
 
 

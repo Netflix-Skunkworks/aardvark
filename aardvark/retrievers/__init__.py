@@ -38,7 +38,7 @@ class RetrieverPlugin(AardvarkPlugin):
         self._name = name
 
     async def run(self, arn: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @property
     def name(self):

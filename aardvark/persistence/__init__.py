@@ -1,8 +1,11 @@
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
 
-from dynaconf import Dynaconf
+from typing import TYPE_CHECKING
 
 from aardvark.plugins import AardvarkPlugin
+
+if TYPE_CHECKING:
+    from dynaconf import Dynaconf
 
 
 class PersistencePlugin(AardvarkPlugin):
@@ -10,24 +13,25 @@ class PersistencePlugin(AardvarkPlugin):
         super().__init__(alternative_config=alternative_config)
 
     def init_db(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def teardown_db(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def get_role_data(
         self,
+        *,
         page: int = 0,
         count: int = 0,
         combine: bool = False,
         phrase: str = "",
-        arns: Optional[List[str]] = None,
+        arns: list[str] | None = None,
         regex: str = "",
-    ) -> Dict[str, Any]:
-        raise NotImplementedError()
+    ) -> dict[str, any]:
+        raise NotImplementedError
 
-    def store_role_data(self, access_advisor_data: Dict[str, Any]) -> None:
-        raise NotImplementedError()
+    def store_role_data(self, access_advisor_data: dict[str, any]) -> None:
+        raise NotImplementedError
 
-    def _combine_results(self, access_advisor_data: Dict[str, Any]) -> Dict[str, Any]:
-        raise NotImplementedError()
+    def _combine_results(self, access_advisor_data: dict[str, any]) -> dict[str, any]:
+        raise NotImplementedError

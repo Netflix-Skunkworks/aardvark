@@ -22,10 +22,10 @@ jobs:
           python -m pip install hatch
       - name: Lint
         run: |
-          echo TODO
+          hatch fmt || true
       - name: Test
         run: |
-          hatch run +py=${{ matrix.python-version }} test:pytest
+          hatch run +py=${{ matrix.python-version }} test:test
       - name: Build dist
         run: |
           hatch build

@@ -4,10 +4,10 @@ import logging
 from typing import Any, Dict, Union
 
 from asgiref.sync import sync_to_async
-from dynaconf import Dynaconf
 from cloudaux.aws.sts import boto3_cached_conn
+from dynaconf import Dynaconf
 
-from aardvark.exceptions import AccessAdvisorException
+from aardvark.exceptions import AccessAdvisorError
 from aardvark.retrievers import RetrieverPlugin
 
 log = logging.getLogger("aardvark")
@@ -40,7 +40,7 @@ class AccessAdvisorRetriever(RetrieverPlugin):
                 continue
             else:
                 error = details.get("Error") or "no error details provided"
-                raise AccessAdvisorException(f"Access Advisor job failed: {error}")
+                raise AccessAdvisorError(f"Access Advisor job failed: {error}")
 
     @staticmethod
     def _get_account_from_arn(arn: str) -> str:
@@ -77,7 +77,7 @@ class AccessAdvisorRetriever(RetrieverPlugin):
         iam_client = await sync_to_async(boto3_cached_conn)("iam", **conn_details)
         try:
             job_id = await self._generate_service_last_accessed_details(iam_client, arn)
-        except iam_client.exceptions.NoSuchEntityException as e:
+        except iam_client.exceptions.NoSuchEntityException:
             log.info(f"ARN {arn} no longer exists in AWS IAM")
             return data
 

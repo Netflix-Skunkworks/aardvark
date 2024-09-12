@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from aardvark.exceptions import AccessAdvisorException
+from aardvark.exceptions import AccessAdvisorError
 from aardvark.retrievers.access_advisor import AccessAdvisorRetriever
 
 
@@ -55,7 +55,7 @@ def test_get_service_last_accessed_details_failure(event_loop):
         {"JobStatus": "FAILED", "Error": "Oh no!"},
     ]
     aar = AccessAdvisorRetriever()
-    with pytest.raises(AccessAdvisorException):
+    with pytest.raises(AccessAdvisorError):
         aa_data = event_loop.run_until_complete(
             aar._get_service_last_accessed_details(iam_client, "abc123")
         )

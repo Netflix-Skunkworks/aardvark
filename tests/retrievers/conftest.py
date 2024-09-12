@@ -1,7 +1,7 @@
 import os
-import pytest
 from typing import Any, Dict
 
+import pytest
 from dynaconf import Dynaconf
 
 from aardvark.retrievers import RetrieverPlugin
@@ -25,22 +25,22 @@ class FailingRetriever(RetrieverPlugin):
         raise Exception("Oh no! Retriever failed")
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def mock_retriever():
     return RetrieverStub()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def mock_failing_retriever():
     return FailingRetriever()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def runner():
     return RetrieverRunner()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def aws_credentials():
     """Mocked AWS Credentials for moto."""
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"

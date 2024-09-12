@@ -96,7 +96,7 @@ def post():
         arns = request.args.get("arn")
         arns = arns.split(",") if arns else []
     except Exception as e:
-        raise abort(400, str(e))
+        raise abort(400, str(e)) from e
 
     values = SQLAlchemyPersistence().get_role_data(
         page=page,

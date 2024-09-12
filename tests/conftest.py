@@ -2,9 +2,8 @@ import pytest
 from dynaconf import Dynaconf
 
 import aardvark.config
-from aardvark.config import settings
 from aardvark import init_logging
-
+from aardvark.config import settings
 
 init_logging()
 
@@ -27,7 +26,7 @@ def patch_config(monkeypatch, tmp_path):
     config = Dynaconf(
         envvar_prefix="AARDVARK",
         settings_files=[
-            "test/settings.yaml",
+            "tests/settings.yaml",
         ],
         environments=True,
     )
@@ -36,4 +35,4 @@ def patch_config(monkeypatch, tmp_path):
 
     # Monkeypatch the actual config object so we don't poison it for future tests
     monkeypatch.setattr(aardvark.config, "settings", config)
-    yield config
+    return config

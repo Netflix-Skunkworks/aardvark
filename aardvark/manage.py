@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 import asyncio
-import click
 import logging
 import os
 import queue
+import sys
 import threading
-from typing import List
+
+import click
 
 from aardvark import create_app, init_logging
-from aardvark.exceptions import AardvarkException
-from aardvark.config import create_config, convert_config, find_legacy_config
+from aardvark.config import convert_config, create_config, find_legacy_config
+from aardvark.exceptions import AardvarkError
 from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 from aardvark.retrievers.runner import RetrieverRunner
 
@@ -135,7 +138,7 @@ def config(aardvark_role, swag_bucket, db_uri, num_threads, no_prompt):
 @cli.command("update")
 @click.option("--account", "-a", type=str, default=[], multiple=True)
 @click.option("--arn", "-r", type=str, default=[], multiple=True)
-def update(account: List[str], arn: List[str]):
+def update(account: list[str], arn: list[str]):
     """
     Asks AWS for new Access Advisor information.
     """
@@ -146,9 +149,9 @@ def update(account: List[str], arn: List[str]):
         asyncio.run(r.run(accounts=accounts, arns=arns))
     except KeyboardInterrupt:
         r.cancel()
-    except AardvarkException as e:
-        log.error(e)
-        exit(1)
+    except AardvarkError:
+        log.exception()
+        sys.exit(1)
 
 
 @cli.command("drop_db")

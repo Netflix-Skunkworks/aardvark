@@ -1,20 +1,24 @@
+from __future__ import annotations
+
 import datetime
 import logging
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING
 
-from dynaconf import Dynaconf
 from sqlalchemy import create_engine, engine
 from sqlalchemy import func as sa_func
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import scoped_session, sessionmaker, Session
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
-from aardvark.exceptions import CombineException, DatabaseException
+from aardvark.exceptions import CombineError, DatabaseError
 from aardvark.persistence import PersistencePlugin
 from aardvark.persistence.sqlalchemy.models import AdvisorData, AWSIAMObject, Base
 
+if TYPE_CHECKING:
+    from dynaconf import Dynaconf
+
 log = logging.getLogger("aardvark")
-session_type = Union[scoped_session, Session]
+session_type = scoped_session | Session
 
 
 class SQLAlchemyPersistence(PersistencePlugin):
@@ -22,7 +26,7 @@ class SQLAlchemyPersistence(PersistencePlugin):
     session_factory: sessionmaker
     session: session_type
 
-    def __init__(self, alternative_config: Dynaconf = None, initialize: bool = True):
+    def __init__(self, *, alternative_config: Dynaconf = None, initialize: bool = True):
         super().__init__(alternative_config=alternative_config)
         if initialize:
             self.init_db()
@@ -80,12 +84,12 @@ class SQLAlchemyPersistence(PersistencePlugin):
             else:
                 log.debug("not closing SQLAlchemy DB session")
 
-    def _combine_results(self, access_advisor_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _combine_results(self, access_advisor_data: dict[str, any]) -> dict[str, any]:
         access_advisor_data.pop("page")
         access_advisor_data.pop("count")
         access_advisor_data.pop("total")
-        usage: Dict[str, Dict] = dict()
-        for arn, services in access_advisor_data.items():
+        usage: dict[str, dict] = {}
+        for services in access_advisor_data.values():
             for service in services:
                 namespace = service.get("serviceNamespace")
                 last_authenticated = service.get("lastAuthenticated")
@@ -104,7 +108,7 @@ class SQLAlchemyPersistence(PersistencePlugin):
             last_authenticated = service["lastAuthenticated"]
             if isinstance(last_authenticated, int):
                 dt_last_authenticated = datetime.datetime.fromtimestamp(
-                    last_authenticated / 1e3
+                    last_authenticated / 1e3, tz=datetime.timezone.utc
                 )
             elif isinstance(last_authenticated, str):
                 dt_last_authenticated = datetime.datetime.strptime(
@@ -118,7 +122,7 @@ class SQLAlchemyPersistence(PersistencePlugin):
 
         return usage
 
-    def store_role_data(self, access_advisor_data: Dict[str, Any], session: session_type = None):
+    def store_role_data(self, access_advisor_data: dict[str, any], session: session_type = None):
         with self.session_scope(session) as session:
             if not access_advisor_data:
                 log.warning(
@@ -150,10 +154,10 @@ class SQLAlchemyPersistence(PersistencePlugin):
         count: int = 0,
         combine: bool = False,
         phrase: str = "",
-        arns: Optional[List[str]] = None,
+        arns: list[str] | None = None,
         regex: str = "",
         session: session_type = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, any]:
         offset = (page - 1) * count if page else 0
         limit = count
         with self.session_scope(session) as session:
@@ -184,7 +188,7 @@ class SQLAlchemyPersistence(PersistencePlugin):
 
                 items = query.all()
             except Exception as e:
-                raise DatabaseException("Could not retrieve roles from database: %s", e)
+                raise DatabaseError("Could not retrieve roles from database: %s", e)
 
             if not items:
                 items = session.query(AWSIAMObject).offset(offset).limit(limit).all()
@@ -206,8 +210,8 @@ class SQLAlchemyPersistence(PersistencePlugin):
                 values[item.arn] = item_values
 
             if combine and total > len(items):
-                raise CombineException(
-                    "Error: Please specify a count of at least {}.".format(total)
+                raise CombineError(
+                    f"Error: Please specify a count of at least {total}."
                 )
             elif combine:
                 return self._combine_results(values)

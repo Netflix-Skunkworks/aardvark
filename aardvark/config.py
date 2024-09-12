@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import os
 
@@ -28,6 +29,7 @@ log = logging.getLogger(__name__)
 
 
 def create_config(
+    *,
     aardvark_role: str = "",
     swag_bucket: str = "",
     swag_filter: str = "",
@@ -65,12 +67,12 @@ def create_config(
 
 def find_legacy_config():
     """Search for config.py in order of preference and return path if it exists, else None"""
-    CONFIG_PATHS = [
+    config_paths = [
         os.path.join(os.getcwd(), "config.py"),
         "/etc/aardvark/config.py",
         "/apps/aardvark/config.py",
     ]
-    for path in CONFIG_PATHS:
+    for path in config_paths:
         if os.path.exists(path):
             return path
     return None
@@ -78,6 +80,7 @@ def find_legacy_config():
 
 def convert_config(
     filename: str,
+    *,
     write: bool = False,
     output_filename: str = "settings.yaml",
     environment: str = "default",
@@ -89,65 +92,43 @@ def convert_config(
     old_config = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(old_config)
 
-    try:
+    with contextlib.suppress(AttributeError):
         settings.set("aws_rolename", old_config.ROLENAME)
-    except AttributeError:
-        pass
 
-    try:
+    with contextlib.suppress(AttributeError):
         settings.set("aws_region", old_config.REGION)
-    except AttributeError:
-        pass
 
-    try:
+    with contextlib.suppress(AttributeError):
         settings.set("aws_arn_partition", old_config.ARN_PARTITION)
-    except AttributeError:
-        pass
 
-    try:
+    with contextlib.suppress(AttributeError):
         settings.set("sqlalchemy_database_uri", old_config.SQLALCHEMY_DATABASE_URI)
-    except AttributeError:
-        pass
 
-    try:
+    with contextlib.suppress(AttributeError):
         settings.set(
             "sqlalchemy_track_modifications", old_config.SQLALCHEMY_TRACK_MODIFICATIONS
         )
-    except AttributeError:
-        pass
 
-    try:
+    with contextlib.suppress(AttributeError):
         settings.set("swag.bucket", old_config.SWAG_BUCKET)
-    except AttributeError:
-        pass
 
-    try:
+    with contextlib.suppress(AttributeError):
         settings.set("swag.opts", old_config.SWAG_OPTS)
-    except AttributeError:
-        pass
 
-    try:
+    with contextlib.suppress(AttributeError):
         settings.set("swag.filter", old_config.SWAG_FILTER)
-    except AttributeError:
-        pass
 
-    try:
+    with contextlib.suppress(AttributeError):
         settings.set(
             "swag.service_enabled_requirement",
             old_config.SWAG_SERVICE_ENABLED_REQUIREMENT,
         )
-    except AttributeError:
-        pass
 
-    try:
+    with contextlib.suppress(AttributeError):
         settings.set("updater_failing_arns", old_config.FAILING_ARNS)
-    except AttributeError:
-        pass
 
-    try:
+    with contextlib.suppress(AttributeError):
         settings.set("updater_num_threads", old_config.NUM_THREADS)
-    except AttributeError:
-        pass
 
     if write:
         write_config(output_filename, environment=environment)

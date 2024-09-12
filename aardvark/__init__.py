@@ -6,9 +6,8 @@ from dynaconf.contrib import FlaskDynaconf
 from flasgger import Swagger
 from flask import Flask
 
-from aardvark.config import settings
-from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 from aardvark.advisors import advisor_bp
+from aardvark.persistence.sqlalchemy import SQLAlchemyPersistence
 
 BLUEPRINTS = [advisor_bp]
 
@@ -17,7 +16,7 @@ API_VERSION = "1"
 log = logging.getLogger("aardvark")
 
 
-def create_app(*args, **kwargs):
+def create_app(**kwargs):
     init_logging()
     app = Flask(__name__, static_url_path="/static")
     Swagger(app)
@@ -39,7 +38,7 @@ def create_app(*args, **kwargs):
 
     # Blueprints
     for bp in BLUEPRINTS:
-        app.register_blueprint(bp, url_prefix="/api/{0}".format(API_VERSION))
+        app.register_blueprint(bp, url_prefix=f"/api/{API_VERSION}")
 
     # Extensions:
     persistence.init_db()
@@ -86,12 +85,12 @@ def init_logging():
 
 def _find_config():
     """Search for config.py in order of preference and return path if it exists, else None"""
-    CONFIG_PATHS = [
+    config_paths = [
         os.path.join(os.getcwd(), "config.py"),
         "/etc/aardvark/config.py",
         "/apps/aardvark/config.py",
     ]
-    for path in CONFIG_PATHS:
+    for path in config_paths:
         if os.path.exists(path):
             return path
     return None

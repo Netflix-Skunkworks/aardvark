@@ -22,21 +22,11 @@ dependencies = [
     "flasgger",
     "flask",
     "SQLAlchemy",
+    "setuptools",
     "swag_client",
     "toml",
 ]
 dynamic = ["version"]
-
-[project.optional-dependencies]
-test = [
-    "flake8",
-    "pytest",
-    "pytest-asyncio",
-]
-dev = [
-    "aardvark[test]",
-    "setuptools",
-]
 
 [project.scripts]
 aardvark = "aardvark.manage:cli"
@@ -50,12 +40,21 @@ include = ["aardvark", "README.md", "LICENSE", "aardvark/config_default.yaml"]
 [tool.hatch.build.hooks.vcs]
 version-file = "aardvark/__version__.py"
 
+[tool.hatch.envs.test]
+extra-dependencies = [
+    "pytest",
+    "pytest-asyncio",
+]
+
 [[tool.hatch.envs.test.matrix]]
 python = ["3.8", "3.9", "3.10", "3.11"]
 
 [tool.hatch.version]
 source = "vcs"
 scheme = "standard"
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/*" = ["ARG001", "ARG002", "PLR2004", "S101", "S105", "SLF001"]
 
 [flake8]
 max-line-length = 121
