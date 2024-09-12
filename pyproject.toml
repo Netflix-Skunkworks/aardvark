@@ -40,6 +40,11 @@ include = ["aardvark", "README.md", "LICENSE", "aardvark/config_default.yaml"]
 [tool.hatch.build.hooks.vcs]
 version-file = "aardvark/__version__.py"
 
+[tool.hatch.envs.build]
+extra-dependencies = [
+    "setuptools_scm",
+]
+
 [tool.hatch.envs.test]
 extra-dependencies = [
     "pytest",
