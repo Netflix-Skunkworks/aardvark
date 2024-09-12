@@ -53,12 +53,12 @@ jobs:
 #        uses: pypa/gh-action-pypi-publish@release/v1
 
   pypi-test-publish:
-    name: Upload release to PyPI
+    name: Upload release to TestPyPI
 #    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     environment:
       name: release
-      url: https://test.pypi.org/legacy/
+      url: https://test.pypi.org/p/aardvark
     permissions:
       id-token: write
     steps:
@@ -67,7 +67,7 @@ jobs:
         with:
           name: python-package-distributions
           path: dist/
-      - name: Publish package distributions to PyPI
+      - name: Publish package distributions to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
