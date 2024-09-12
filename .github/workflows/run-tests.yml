@@ -1,4 +1,4 @@
-name: Build
+name: Run tests
 
 # TODO: switch this to run on PRs
 on: [push]
