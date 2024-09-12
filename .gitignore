@@ -30,7 +30,9 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-aardvark/__version__.py
+
+# Auto generated during builds
+/aardvark/__version__.py
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
