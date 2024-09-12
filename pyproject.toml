@@ -50,6 +50,10 @@ python = ["3.10", "3.11"]
 source = "vcs"
 scheme = "standard"
 
+[tool.hatch.version.raw-options]
+version_scheme = "python-simplified-semver"
+local_scheme = "no-local-version"
+
 [tool.ruff.lint.per-file-ignores]
 "**/tests/*" = ["ARG001", "ARG002", "PLR2004", "S101", "S105", "SLF001"]
 
