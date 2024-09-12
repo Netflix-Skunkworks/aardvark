@@ -32,13 +32,26 @@ jobs:
         run: |
           hatch build
 
-  pypi-publish:
+#  pypi-publish:
+#    name: Upload release to PyPI
+#    #    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+#    runs-on: ubuntu-latest
+#    environment:
+#      name: release
+#      url: https://pypi.org/p/aardvark
+#    permissions:
+#      id-token: write
+#    steps:
+#      - name: Publish package distributions to PyPI
+#        uses: pypa/gh-action-pypi-publish@release/v1
+
+  pypi-test-publish:
     name: Upload release to PyPI
 #    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     environment:
       name: release
-      url: https://test.pypi.org/p/aardvark
+      url: https://test.pypi.org/legacy/
     permissions:
       id-token: write
     steps:
