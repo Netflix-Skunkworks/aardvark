@@ -11,7 +11,7 @@ description = "A multi-account AWS IAM Access Advisor API"
 readme = "README.md"
 authors = [{name = "Netflix", email = "aardvark-maintainers@netflix.com"}]
 license = {file = "LICENSE"}
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     "asgiref",
     "blinker",
@@ -47,7 +47,7 @@ extra-dependencies = [
 ]
 
 [[tool.hatch.envs.test.matrix]]
-python = ["3.8", "3.9", "3.10", "3.11"]
+python = ["3.10", "3.11"]
 
 [tool.hatch.version]
 source = "vcs"

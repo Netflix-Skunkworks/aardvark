@@ -13,14 +13,14 @@ Aardvark is a multi-account AWS IAM Access Advisor API (and caching layer).
 
 ✨ Enhancement
 
-- ⚠️ Upgrade to Python 3.8+
+- ⚠️ Upgrade to Python 3.10+
 - ⚠️ New configuration format
 - ✨ Pluggable persistence layer
 - ✨ Pluggable retrievers
 
 ## Install
 
-Ensure that you have Python 3.8 or later.
+Ensure that you have Python 3.10 or later.
 
 Use pip install Aardvark:
 
