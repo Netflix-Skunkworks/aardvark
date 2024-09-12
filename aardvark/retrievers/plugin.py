@@ -1,9 +1,12 @@
-import logging
-from typing import Any
+from __future__ import annotations
 
-from dynaconf import Dynaconf
+import logging
+from typing import TYPE_CHECKING, Any
 
 from aardvark.plugins import AardvarkPlugin
+
+if TYPE_CHECKING:
+    from dynaconf.utils import DynaconfDict
 
 log = logging.getLogger("aardvark")
 
@@ -11,7 +14,7 @@ log = logging.getLogger("aardvark")
 class RetrieverPlugin(AardvarkPlugin):
     _name: str
 
-    def __init__(self, name: str, alternative_config: Dynaconf = None):
+    def __init__(self, name: str, alternative_config: DynaconfDict = None):
         super().__init__(alternative_config=alternative_config)
         self._name = name
 

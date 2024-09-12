@@ -1,20 +1,25 @@
+from __future__ import annotations
+
 import asyncio
-import datetime
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from asgiref.sync import sync_to_async
 from cloudaux.aws.sts import boto3_cached_conn
-from dynaconf import Dynaconf
 
 from aardvark.exceptions import AccessAdvisorError
 from aardvark.retrievers import RetrieverPlugin
+
+if TYPE_CHECKING:
+    import datetime
+
+    from dynaconf.utils import DynaconfDict
 
 log = logging.getLogger("aardvark")
 
 
 class AccessAdvisorRetriever(RetrieverPlugin):
-    def __init__(self, alternative_config: Dynaconf = None):
+    def __init__(self, alternative_config: DynaconfDict | None = None):
         super().__init__("access_advisor", alternative_config=alternative_config)
 
     async def _generate_service_last_accessed_details(self, iam_client, arn):

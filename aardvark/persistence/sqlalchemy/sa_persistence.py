@@ -16,7 +16,7 @@ from aardvark.persistence import PersistencePlugin
 from aardvark.persistence.sqlalchemy.models import AdvisorData, AWSIAMObject, Base
 
 if TYPE_CHECKING:
-    from dynaconf import Dynaconf
+    from dynaconf.utils import DynaconfDict
 
 log = logging.getLogger("aardvark")
 session_type = scoped_session | Session
@@ -27,7 +27,7 @@ class SQLAlchemyPersistence(PersistencePlugin):
     session_factory: sessionmaker
     session: session_type
 
-    def __init__(self, *, alternative_config: Dynaconf = None, initialize: bool = True):
+    def __init__(self, *, alternative_config: DynaconfDict | None = None, initialize: bool = True):
         super().__init__(alternative_config=alternative_config)
         if initialize:
             self.init_db()
@@ -216,7 +216,7 @@ class SQLAlchemyPersistence(PersistencePlugin):
     def create_or_update_advisor_data(
         self,
         item_id: int,
-        last_authenticated: int,
+        last_authenticated: datetime.datetime,
         service_name: str,
         service_namespace: str,
         last_authenticated_entity: str,
@@ -226,12 +226,14 @@ class SQLAlchemyPersistence(PersistencePlugin):
         with self.session_scope(session) as session:
             service_name = service_name[:128]
             service_namespace = service_namespace[:64]
-            item = None
+            item: AdvisorData | None = None
             try:
                 item = (
                     session.query(AdvisorData)
-                    .filter(AdvisorData.item_id == item_id)
-                    .filter(AdvisorData.serviceNamespace == service_namespace)
+                    .filter(
+                        AdvisorData.item_id == item_id,
+                        AdvisorData.serviceNamespace == service_namespace,
+                    )
                     .scalar()
                 )
             except SQLAlchemyError:
@@ -243,70 +245,53 @@ class SQLAlchemyPersistence(PersistencePlugin):
                 raise
 
             if not item:
-                item = AdvisorData(
-                    item_id=item_id,
-                    lastAuthenticated=last_authenticated,
-                    serviceName=service_name,
-                    serviceNamespace=service_namespace,
-                    lastAuthenticatedEntity=last_authenticated_entity,
-                    totalAuthenticatedEntities=total_authenticated_entities,
-                )
-                try:
-                    session.add(item)
-                except SQLAlchemyError:
-                    log.exception("failed to add AdvisorData item to session")
-                    raise
-                return
+                item = AdvisorData()
 
+            # Save existing lastAuthenticated timestamp for later comparison
             # sqlite will return a string for item.lastAuthenticated, so we parse that into a datetime
             if isinstance(item.lastAuthenticated, str):
-                ts = datetime.datetime.strptime(item.lastAuthenticated, "%Y-%m-%d %H:%M:%S.%f")
+                existing_last_authenticated = datetime.datetime.strptime(item.lastAuthenticated, "%Y-%m-%d %H:%M:%S.%f")
             else:
-                ts = item.lastAuthenticated
+                existing_last_authenticated = item.lastAuthenticated
 
-            if last_authenticated > ts:
-                item.lastAuthenticated = last_authenticated
-                try:
-                    session.add(item)
-                except SQLAlchemyError:
-                    log.exception("failed to add AdvisorData item to session")
-                    raise
+            # Set all fields to the provided values. SQLAlchemy will only mark the model instance as modified if the actual
+            # values have changed, so this will be a no-op if the values are all the same.
+            item.item_id = item_id
+            item.lastAuthenticated = last_authenticated
+            item.lastAuthenticatedEntity = last_authenticated_entity
+            item.serviceName = service_name
+            item.serviceNamespace = service_namespace
+            item.totalAuthenticatedEntities = total_authenticated_entities
 
-            elif last_authenticated < ts:
-                """
-                lastAuthenticated is obtained by calling get_service_last_accessed_details() method of the boto3 iam client.
-                When there is no AA data about a service, the lastAuthenticated key is missing from the returned dictionary.
-                This is perfectly valid, either because the service in question was not accessed in the past 365 days or
-                the entity granting  access to it was created recently enough that no AA data is available yet (it can take up to
-                4 hours for this to happen).
-                When this happens, the AccountToUpdate._get_job_results() method will set lastAuthenticated to 0.
-                Usually we don't want to persist such an entity, with one exception: there's already a recorded, non-zero lastAuthenticated
-                timestamp persisted for this item. That means the service was accessed at some point in time, but now more than 365 passed since
-                the last access, so AA no longer returns a timestamp for it.
-                """
+            # When there is no AA data about a service, the lastAuthenticated key is missing from the returned data.
+            # This is perfectly valid, either because the service in question was not accessed in the past 365 days or
+            # the entity granting  access to it was created recently enough that no AA data is available yet (it can
+            # take up to 4 hours for this to happen).
+            #
+            # When this happens, the AccountToUpdate._get_job_results() method will set lastAuthenticated to 0. Usually
+            # we don't want to persist such an entity, with one exception: there's already a recorded, non-zero
+            # lastAuthenticated timestamp persisted for this item. That means the service was accessed at some point in
+            # time, but now more than 365 passed since the last access, so AA no longer returns a timestamp for it.
+            if existing_last_authenticated is not None and existing_last_authenticated > last_authenticated:
                 if last_authenticated == 0:
-                    log.warning(
-                        "Previously seen object not accessed in the past 365 days "
-                        "(got null lastAuthenticated from AA). Setting to 0. "
-                        "Object %d service %s previous timestamp %d",
+                    log.info(
+                        "Previously seen object not accessed in the past 365 days (got null lastAuthenticated from "
+                        "AA). Setting to 0. Object %s service %s previous timestamp %d",
                         item.item_id,
                         item.serviceName,
                         item.lastAuthenticated,
                     )
-                    item.lastAuthenticated = 0
-                    try:
-                        session.add(item)
-                    except SQLAlchemyError:
-                        log.exception("failed to add AdvisorData item to session")
-                        raise
                 else:
                     log.warning(
-                        "Received an older time than previously seen for object %s service %s (%d < %d)!",
+                        "Received an older time than previously seen for object %s service %s (%d < %d). Not updating!",
                         item.item_id,
                         item.serviceName,
-                        item.lastAuthenticated,
                         last_authenticated,
+                        existing_last_authenticated,
                     )
+                    item.lastAuthenticated = existing_last_authenticated
+
+            session.add(item)
 
     def get_or_create_iam_object(self, arn: str, session: session_type = None):
         with self.session_scope(session) as session:

@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING
 from aardvark.plugins import AardvarkPlugin
 
 if TYPE_CHECKING:
-    from dynaconf import Dynaconf
+    from dynaconf.utils import DynaconfDict
 
 
 class PersistencePlugin(AardvarkPlugin):
-    def __init__(self, alternative_config: Dynaconf = None):
+    def __init__(self, alternative_config: DynaconfDict | None = None):
         super().__init__(alternative_config=alternative_config)
 
     def init_db(self):
