@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
+requires = ["hatchling", "hatch-vcs", "hatch-build-scripts"]
 build-backend = "hatchling.build"
 
 [project]
@@ -34,12 +34,14 @@ repository = "https://github.com/Netflix-Skunkworks/aardvark"
 [tool.hatch.build]
 include = ["aardvark", "README.md", "LICENSE", "aardvark/config_default.yaml"]
 
-#[[tool.hatch.build.hooks.build-scripts.scripts]]
-#commands = [
-#    # the version file is updated as part of the build. this command tells git to ignore it.
-#    "git update-index --skip-worktree aardvark/__version__.py",
-#]
-#artifacts = []
+[[tool.hatch.build.hooks.build-scripts.scripts]]
+commands = [
+    # the version file is updated as part of the build. this command tells git to ignore it.
+    # if you actually need to update the version file, you'll need to run the inverse of this command:
+    #   git update-index --no-skip-worktree aardvark/__version__.py
+    "git update-index --skip-worktree aardvark/__version__.py",
+]
+artifacts = []
 
 [tool.hatch.build.hooks.vcs]
 version-file = "aardvark/__version__.py"
