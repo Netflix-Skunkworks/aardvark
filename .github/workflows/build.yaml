@@ -1,4 +1,4 @@
-name: Lint & Test
+name: Build
 
 # TODO: switch this to run on PRs
 on: [push]

@@ -1,10 +1,13 @@
-name: Publish package
+name: Publish
 
 on:
   workflow_run:
-    workflows: [Lint & Test]
-    types: [completed]
-    branches: [develop]
+    workflows:
+      - Build
+    types:
+      - completed
+    branches:
+      - develop
 
 jobs:
   on-failure:
@@ -14,10 +17,11 @@ jobs:
       - run: echo 'The triggering workflow failed'
   package:
     name: Build package
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: [ "3.10", "3.11" ]
 
     steps:
       - uses: actions/checkout@v3
@@ -34,6 +38,7 @@ jobs:
 
   pypi-publish:
     name: Upload release to PyPI
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -41,5 +46,5 @@ jobs:
     permissions:
       id-token: write
     steps:
-    - name: Publish package distributions to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
