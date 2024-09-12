@@ -32,7 +32,7 @@ wheels/
 *.egg
 
 # Auto generated during builds
-/aardvark/__version__.py
+aardvark/__version__.py
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
