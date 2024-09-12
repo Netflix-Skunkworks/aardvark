@@ -39,6 +39,7 @@ commands = [
     # the version file is updated as part of the build. this command tells git to ignore it.
     "git update-index --skip-worktree aardvark/__version__.py",
 ]
+artifacts = []
 
 [tool.hatch.build.hooks.vcs]
 version-file = "aardvark/__version__.py"
