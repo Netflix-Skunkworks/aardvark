@@ -1,3 +1,4 @@
+# ruff: noqa: N815
 from sqlalchemy import TIMESTAMP, BigInteger, Column, ForeignKey, Integer, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -22,9 +23,7 @@ class AdvisorData(Base):
 
     __tablename__ = "advisor_data"
     id = Column(Integer, primary_key=True)
-    item_id = Column(
-        Integer, ForeignKey("aws_iam_object.id"), nullable=False, index=True
-    )
+    item_id = Column(Integer, ForeignKey("aws_iam_object.id"), nullable=False, index=True)
     lastAuthenticated = Column(BigInteger)
     serviceName = Column(String(128), index=True)
     serviceNamespace = Column(String(64), index=True)
@@ -63,9 +62,7 @@ class ActionData(Base):
 
     __tablename__ = "action_data"
     id = Column(Integer, primary_key=True)
-    item_id = Column(
-        Integer, ForeignKey("aws_iam_object.id"), nullable=False, index=True
-    )
+    item_id = Column(Integer, ForeignKey("aws_iam_object.id"), nullable=False, index=True)
     lastAuthenticated = Column(BigInteger)
     serviceName = Column(String(128), index=True)
     serviceNamespace = Column(String(64), index=True)

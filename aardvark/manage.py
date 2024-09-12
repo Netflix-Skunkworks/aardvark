@@ -34,7 +34,7 @@ DEFAULT_NUM_THREADS = 5
 
 
 def get_app():
-    global APP
+    global APP  # noqa: PLW0603
     if not APP:
         APP = create_app()
     return APP
@@ -100,7 +100,7 @@ def config(aardvark_role, swag_bucket, db_uri, num_threads, no_prompt):
         if swag_bucket:
             bucket = swag_bucket
         else:
-            print(f"\nAardvark can use SWAG to look up accounts. See {SWAG_REPO_URL}")
+            print(f"\nAardvark can use SWAG to look up accounts. See {SWAG_REPO_URL}")  # noqa: T201
             use_swag = input("Do you use SWAG to track accounts? [yN]: ")
             if len(use_swag) > 0 and "yes".startswith(use_swag.lower()):
                 bucket_prompt = f"SWAG bucket [{DEFAULT_SWAG_BUCKET}]: "
@@ -113,13 +113,9 @@ def config(aardvark_role, swag_bucket, db_uri, num_threads, no_prompt):
         num_threads_prompt = f"Worker Count [{DEFAULT_NUM_THREADS}]: "
         save_file_prompt = f"Config file location [{default_save_file}]: "
 
-        aardvark_role = (
-                aardvark_role or input(aardvark_role_prompt) or DEFAULT_AARDVARK_ROLE
-        )
+        aardvark_role = aardvark_role or input(aardvark_role_prompt) or DEFAULT_AARDVARK_ROLE
         db_uri = db_uri or input(db_uri_prompt) or default_db_uri
-        num_threads = (
-                num_threads or input(num_threads_prompt) or DEFAULT_NUM_THREADS
-        )
+        num_threads = num_threads or input(num_threads_prompt) or DEFAULT_NUM_THREADS
         save_file = input(save_file_prompt) or default_save_file
 
     create_config(

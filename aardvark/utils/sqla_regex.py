@@ -24,7 +24,7 @@ class String(_String):
     filter expressions.
     """
 
-    class comparator_factory(_String.comparator_factory):
+    class ComparatorFactory(_String.comparator_factory):
         """Contains implementation of :class:`String` operators
         related to regular expressions.
         """
@@ -47,7 +47,7 @@ class RegexMatchExpression(BinaryExpression):
 
 
 @compiles(RegexMatchExpression, "sqlite")
-def sqlite_regex_match(element, compiler, **kw):
+def sqlite_regex_match(element, compiler, **_):
     """Compile the SQL expression representing a regular expression match
     for the SQLite engine.
     """
@@ -56,15 +56,14 @@ def sqlite_regex_match(element, compiler, **kw):
     try:
         func_name, _ = SQLITE_REGEX_FUNCTIONS[operator]
     except (KeyError, ValueError) as e:
-        would_be_sql_string = " ".join(
-            (compiler.process(element.left), operator, compiler.process(element.right))
-        )
+        would_be_sql_string = " ".join((compiler.process(element.left), operator, compiler.process(element.right)))
+        message = f"unknown regular expression match operator: {operator}"
         raise exc.StatementError(
-            "unknown regular expression match operator: %s" % operator,
+            message,
             would_be_sql_string,
             None,
             e,
-        )
+        ) from e
 
     # compile the expression as an invocation of the custom function
     regex_func = getattr(func, func_name)
@@ -73,7 +72,7 @@ def sqlite_regex_match(element, compiler, **kw):
 
 
 @event.listens_for(Engine, "connect")
-def sqlite_engine_connect(dbapi_connection, connection_record):
+def sqlite_engine_connect(dbapi_connection, _):
     """Listener for the event of establishing connection to a SQLite database.
 
     Creates the functions handling regular expression operators

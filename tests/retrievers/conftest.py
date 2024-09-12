@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 from dynaconf import Dynaconf
@@ -12,7 +12,7 @@ class RetrieverStub(RetrieverPlugin):
     def __init__(self, alternative_config: Dynaconf = None):
         super().__init__("retriever_stub", alternative_config=alternative_config)
 
-    async def run(self, arn: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def run(self, arn: str, data: dict[str, Any]) -> dict[str, Any]:
         data["retriever_stub"] = {"success": True}
         return data
 
@@ -21,8 +21,8 @@ class FailingRetriever(RetrieverPlugin):
     def __init__(self, alternative_config: Dynaconf = None):
         super().__init__("retriever_stub", alternative_config=alternative_config)
 
-    async def run(self, arn: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        raise Exception("Oh no! Retriever failed")
+    async def run(self, arn: str, data: dict[str, Any]) -> dict[str, Any]:
+        raise Exception("Oh no! Retriever failed")  # noqa
 
 
 @pytest.fixture

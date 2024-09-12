@@ -48,37 +48,29 @@ def create_app(**kwargs):
 
 def init_logging():
     log_cfg = {
-        'version': 1,
-        'disable_existing_loggers': False,
-        'formatters': {
-            'standard': {
-                'format': '%(asctime)s %(levelname)s: %(message)s '
-                    '[in %(pathname)s:%(lineno)d]'
-            }
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "standard": {"format": "%(asctime)s %(levelname)s: %(message)s " "[in %(pathname)s:%(lineno)d]"}
         },
-        'handlers': {
-            'file': {
-                'class': 'logging.handlers.RotatingFileHandler',
-                'level': 'DEBUG',
-                'formatter': 'standard',
-                'filename': 'aardvark.log',
-                'maxBytes': 10485760,
-                'backupCount': 100,
-                'encoding': 'utf8'
+        "handlers": {
+            "file": {
+                "class": "logging.handlers.RotatingFileHandler",
+                "level": "DEBUG",
+                "formatter": "standard",
+                "filename": "aardvark.log",
+                "maxBytes": 10485760,
+                "backupCount": 100,
+                "encoding": "utf8",
             },
-            'console': {
-                'class': 'logging.StreamHandler',
-                'level': 'DEBUG',
-                'formatter': 'standard',
-                'stream': 'ext://sys.stdout'
-            }
+            "console": {
+                "class": "logging.StreamHandler",
+                "level": "DEBUG",
+                "formatter": "standard",
+                "stream": "ext://sys.stdout",
+            },
         },
-        'loggers': {
-            'aardvark': {
-                'handlers': ['file', 'console'],
-                'level': 'DEBUG'
-            }
-        }
+        "loggers": {"aardvark": {"handlers": ["file", "console"], "level": "DEBUG"}},
     }
     dictConfig(log_cfg)
 

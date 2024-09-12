@@ -17,11 +17,11 @@ settings = Dynaconf(
     env_switcher="AARDVARK_ENV",
     environments=True,
     validators=[
-        Validator('AWS_ARN_PARTITION', default='aws'),
-        Validator('AWS_REGION', default='us-east-1'),
-        Validator('AWS_ARN_PARTITION', default='aws'),
-        Validator('SQLALCHEMY_DATABASE_URI', default='sqlite:///aardvark.db'),
-        Validator('UPDATER_NUM_THREADS', default=1),
+        Validator("AWS_ARN_PARTITION", default="aws"),
+        Validator("AWS_REGION", default="us-east-1"),
+        Validator("AWS_ARN_PARTITION", default="aws"),
+        Validator("SQLALCHEMY_DATABASE_URI", default="sqlite:///aardvark.db"),
+        Validator("UPDATER_NUM_THREADS", default=1),
     ],
 )
 
@@ -53,9 +53,7 @@ def create_config(
     if swag_filter:
         settings.set("swag.filter", swag_filter)
     if swag_service_enabled_requirement:
-        settings.set(
-            "swag.service_enabled_requirement", swag_service_enabled_requirement
-        )
+        settings.set("swag.service_enabled_requirement", swag_service_enabled_requirement)
     if sqlalchemy_database_uri:
         settings.set("sqlalchemy_database_uri", sqlalchemy_database_uri)
     if sqlalchemy_track_modifications:
@@ -105,9 +103,7 @@ def convert_config(
         settings.set("sqlalchemy_database_uri", old_config.SQLALCHEMY_DATABASE_URI)
 
     with contextlib.suppress(AttributeError):
-        settings.set(
-            "sqlalchemy_track_modifications", old_config.SQLALCHEMY_TRACK_MODIFICATIONS
-        )
+        settings.set("sqlalchemy_track_modifications", old_config.SQLALCHEMY_TRACK_MODIFICATIONS)
 
     with contextlib.suppress(AttributeError):
         settings.set("swag.bucket", old_config.SWAG_BUCKET)

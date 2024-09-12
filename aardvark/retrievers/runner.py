@@ -2,7 +2,7 @@ import asyncio
 import logging
 import re
 from copy import copy
-from typing import Any, Dict, List
+from typing import Any
 
 from asgiref.sync import sync_to_async
 from botocore.exceptions import ClientError
@@ -28,16 +28,16 @@ EMPTY_QUEUE_RETRIES = 5
 class RetrieverRunner(AardvarkPlugin):
     """Scheduling and execution for data retrieval tasks."""
 
-    retrievers: List[RetrieverPlugin]
+    retrievers: list[RetrieverPlugin]
     account_queue: asyncio.Queue
     arn_queue: asyncio.Queue
     results_queue: asyncio.Queue
     failure_queue: asyncio.Queue
-    failed_arns: List[str]
-    tasks: List[asyncio.Future]
+    failed_arns: list[str]
+    tasks: list[asyncio.Future]
     num_workers: int
     swag: SWAGManager
-    swag_config: Dict[str, str]
+    swag_config: dict[str, str]
     accounts_complete: bool
     persistence: SQLAlchemyPersistence
 
@@ -60,7 +60,7 @@ class RetrieverRunner(AardvarkPlugin):
         """Add a retriever instance to be called during the run process."""
         self.retrievers.append(r)
 
-    async def _run_retrievers(self, arn: str) -> Dict[str, Any]:
+    async def _run_retrievers(self, arn: str) -> dict[str, Any]:
         """Run retriever plugins for a given ARN.
 
         Retriever plugins are executed in the order in which they are registered. Each retriever
@@ -76,7 +76,7 @@ class RetrieverRunner(AardvarkPlugin):
             try:
                 data = await r.run(arn, data)
             except Exception as e:
-                log.error("failed to run %s on ARN %s", r, arn)
+                log.exception("failed to run %s on ARN %s", r, arn)
                 raise RetrieverError from e
         return data
 
@@ -89,8 +89,8 @@ class RetrieverRunner(AardvarkPlugin):
             log.debug("%s retrieving data for %s", name, arn)
             try:
                 data = await self._run_retrievers(arn)
-            except Exception as e:
-                log.exception("failed to run retriever on ARN %s: %s", arn, str(e))
+            except Exception:
+                log.exception("failed to run retriever on ARN %s", arn)
                 self.failed_arns.append(arn)
                 await self.failure_queue.put(arn)
                 self.arn_queue.task_done()
@@ -104,28 +104,24 @@ class RetrieverRunner(AardvarkPlugin):
         log.debug("creating %s", name)
         while True:
             data = await self.results_queue.get()
-            log.debug("%s storing results for %s", name, data['arn'])
+            log.debug("%s storing results for %s", name, data["arn"])
             try:
-                await sync_to_async(self.persistence.store_role_data)(
-                    {data["arn"]: data["access_advisor"]}
-                )
-            except Exception as e:
-                log.exception("exception occurred in results loop: %s", str(e))
+                await sync_to_async(self.persistence.store_role_data)({data["arn"]: data["access_advisor"]})
+            except Exception:
+                log.exception("exception occurred in results loop")
                 await self.failure_queue.put(data)
             self.results_queue.task_done()
 
     async def _get_arns_for_account(self, account: str):
         """Retrieve ARNs for roles, users, policies, and groups in an account and add them to the ARN queue."""
-        conn_details: Dict[str, str] = {
+        conn_details: dict[str, str] = {
             "account_number": account,
             "assume_role": self.config.get("aws_rolename"),
             "session_name": "aardvark",
             "region": self.config.get("aws_region", "us-east-1"),
             "arn_partition": self.config.get("aws_arn_partition", "aws"),
         }
-        client = await sync_to_async(boto3_cached_conn)(
-            "iam", service_type="client", **conn_details
-        )
+        client = await sync_to_async(boto3_cached_conn)("iam", service_type="client", **conn_details)
 
         for role in await sync_to_async(list_roles)(**conn_details):
             await self.arn_queue.put(role["Arn"])
@@ -133,9 +129,7 @@ class RetrieverRunner(AardvarkPlugin):
         for user in await sync_to_async(list_users)(**conn_details):
             await self.arn_queue.put(user["Arn"])
 
-        for page in await sync_to_async(client.get_paginator("list_policies").paginate)(
-            Scope="Local"
-        ):
+        for page in await sync_to_async(client.get_paginator("list_policies").paginate)(Scope="Local"):
             for policy in page["Policies"]:
                 await self.arn_queue.put(policy["Arn"])
 
@@ -145,23 +139,23 @@ class RetrieverRunner(AardvarkPlugin):
 
     async def _arn_lookup_loop(self, name: str):
         """Loop to consume from self.account_queue to retrieve and enqueue ARNs for each account."""
-        log.debug(f"creating {name}")
+        log.debug("creating %s", name)
         while True:
             log.debug("getting account from queue")
             account = await self.account_queue.get()
-            log.debug(f"{name} retrieving ARNs for {account}")
+            log.debug("%s retrieving ARNs for %s", name, account)
             try:
                 await self._get_arns_for_account(account)
-            except Exception as e:
-                log.exception("exception occurred in arn lookup loop: %s", str(e))
+            except ClientError:
+                log.exception("exception occurred in arn lookup loop: %s")
                 await self.failure_queue.put(account)
             self.account_queue.task_done()
 
-    async def _get_swag_accounts(self) -> List[Dict]:
+    async def _get_swag_accounts(self) -> list[dict]:
         """Retrieve AWS accounts from SWAG based on the SWAG options in the application configuration."""
         log.debug("getting accounts from SWAG")
         try:
-            all_accounts: List[Dict] = self.swag.get_all(self.swag_config["filter"])
+            all_accounts: list[dict] = self.swag.get_all(self.swag_config["filter"])
             swag_service = self.swag_config["service_enabled_requirement"]
             if swag_service:
                 all_accounts = await sync_to_async(self.swag.get_service_enabled)(
@@ -170,10 +164,9 @@ class RetrieverRunner(AardvarkPlugin):
             else:
                 all_accounts = await sync_to_async(self.swag.get_all)(search_filter=self.swag_config["filter"])
         except (KeyError, InvalidSWAGDataException, ClientError) as e:
-            log.error(
-                "account names passed but SWAG not configured or unavailable: %s", str(e)
-            )
-            raise RetrieverError("could not retrieve SWAG data") from e
+            log.exception("account names passed but SWAG not configured or unavailable")
+            message = "could not retrieve SWAG data"
+            raise RetrieverError(message) from e
 
         return all_accounts
 
@@ -184,12 +177,12 @@ class RetrieverRunner(AardvarkPlugin):
         for account in await self._get_swag_accounts():
             await self.account_queue.put(account["id"])
 
-    async def _queue_arns(self, arns: List[str]):
+    async def _queue_arns(self, arns: list[str]):
         """Add a list of ARNs to the ARN queue."""
         for arn in arns:
             await self.arn_queue.put(arn)
 
-    async def _queue_accounts(self, account_names: List[str]):
+    async def _queue_accounts(self, account_names: list[str]):
         """Add requested accounts to the account queue.
 
         Given a list of account names and/or IDs, use SWAG to look up account numbers where needed
@@ -223,10 +216,10 @@ class RetrieverRunner(AardvarkPlugin):
             task.cancel()
             log.info("task %s canceled", task)
 
-    async def run(self, accounts: List[str] = None, arns: List[str] = None):
+    async def run(self, accounts: list[str] | None = None, arns: list[str] | None = None):
         """Prep account queue and kick off ARN lookup, retriever, and results workers.
 
-        Populate ARN queue with ARNs if provided. Otherwise use SWAG to look up account
+        Populate ARN queue with ARNs if provided. Otherwise, use SWAG to look up account
         numbers and put those in the account queue.
 
         After that, we start `updater.num_threads` workers for each queue. Workers will NOT

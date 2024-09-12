@@ -1,3 +1,4 @@
+# ruff: noqa: DTZ005
 import datetime
 
 import pytest
@@ -61,9 +62,7 @@ def test_sqlalchemypersistence_custom_config():
 
 
 def test_init_db(temp_sqlite_db_config):
-    sap = SQLAlchemyPersistence(
-        alternative_config=temp_sqlite_db_config, initialize=False
-    )
+    sap = SQLAlchemyPersistence(alternative_config=temp_sqlite_db_config, initialize=False)
     sap.init_db()
     assert sap.sa_engine
     assert sap.session_factory
@@ -75,24 +74,27 @@ def test_init_db(temp_sqlite_db_config):
 
 
 def test_teardown_db(temp_sqlite_db_config):
-    sap = SQLAlchemyPersistence(
-        alternative_config=temp_sqlite_db_config, initialize=False
-    )
+    sap = SQLAlchemyPersistence(alternative_config=temp_sqlite_db_config, initialize=False)
     sap.init_db()
     sap.teardown_db()
     from aardvark.persistence.sqlalchemy.models import AdvisorData, AWSIAMObject
 
-    with sap.session_scope() as session:
-        with pytest.raises(OperationalError):
-            session.query(AdvisorData).all()
-            session.query(AWSIAMObject).all()
+    with (
+        sap.session_scope() as session,
+        pytest.raises(OperationalError),
+    ):
+        session.query(AdvisorData).all()
+
+    with (
+        sap.session_scope() as session,
+        pytest.raises(OperationalError),
+    ):
+        session.query(AWSIAMObject).all()
 
 
 def test_create_iam_object(temp_sqlite_db_config):
     sap = SQLAlchemyPersistence(alternative_config=temp_sqlite_db_config)
-    iam_object = sap.create_iam_object(
-        "arn:aws:iam::123456789012:role/SpongebobSquarepants", datetime.datetime.now()
-    )
+    iam_object = sap.create_iam_object("arn:aws:iam::123456789012:role/SpongebobSquarepants", datetime.datetime.now())
     assert iam_object.id
     assert iam_object.arn == "arn:aws:iam::123456789012:role/SpongebobSquarepants"
 
@@ -131,18 +133,14 @@ def test_get_or_create_iam_object(temp_sqlite_db_config):
     sap = SQLAlchemyPersistence(alternative_config=temp_sqlite_db_config)
 
     # create a new IAM object
-    new_object = sap.get_or_create_iam_object(
-        "arn:aws:iam::123456789012:role/SquidwardTentacles"
-    )
+    new_object = sap.get_or_create_iam_object("arn:aws:iam::123456789012:role/SquidwardTentacles")
     assert new_object.id
     assert new_object.arn == "arn:aws:iam::123456789012:role/SquidwardTentacles"
     object_id = new_object.id
     object_arn = new_object.arn
 
     # make the same call and make sure we get the same entry we created before
-    retrieved_object = sap.get_or_create_iam_object(
-        "arn:aws:iam::123456789012:role/SquidwardTentacles"
-    )
+    retrieved_object = sap.get_or_create_iam_object("arn:aws:iam::123456789012:role/SquidwardTentacles")
     assert retrieved_object.id
     assert retrieved_object.arn == "arn:aws:iam::123456789012:role/SquidwardTentacles"
     assert retrieved_object.id == object_id

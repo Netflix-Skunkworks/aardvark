@@ -11,9 +11,7 @@ def test_generate_service_last_accessed_details(event_loop):
     iam_client = MagicMock()
     iam_client.generate_service_last_accessed_details.return_value = {"JobId": "abc123"}
     aar = AccessAdvisorRetriever()
-    job_id = event_loop.run_until_complete(
-        aar._generate_service_last_accessed_details(iam_client, "abc123")
-    )
+    job_id = event_loop.run_until_complete(aar._generate_service_last_accessed_details(iam_client, "abc123"))
     assert job_id == "abc123"
 
 
@@ -27,9 +25,7 @@ def test_get_service_last_accessed_details(event_loop):
             "ServicesLastAccessed": [
                 {
                     "ServiceName": "AWS Lambda",
-                    "LastAuthenticated": datetime.datetime(
-                        2020, 4, 12, 15, 30, tzinfo=datetime.timezone.utc
-                    ),
+                    "LastAuthenticated": datetime.datetime(2020, 4, 12, 15, 30, tzinfo=datetime.timezone.utc),
                     "ServiceNamespace": "lambda",
                     "LastAuthenticatedEntity": "arn:aws:iam::123456789012:user/admin",
                     "TotalAuthenticatedEntities": 6,
@@ -38,14 +34,9 @@ def test_get_service_last_accessed_details(event_loop):
         },
     ]
     aar = AccessAdvisorRetriever()
-    aa_data = event_loop.run_until_complete(
-        aar._get_service_last_accessed_details(iam_client, "abc123")
-    )
+    aa_data = event_loop.run_until_complete(aar._get_service_last_accessed_details(iam_client, "abc123"))
     assert aa_data["ServicesLastAccessed"][0]["ServiceName"] == "AWS Lambda"
-    assert (
-        aa_data["ServicesLastAccessed"][0]["LastAuthenticatedEntity"]
-        == "arn:aws:iam::123456789012:user/admin"
-    )
+    assert aa_data["ServicesLastAccessed"][0]["LastAuthenticatedEntity"] == "arn:aws:iam::123456789012:user/admin"
 
 
 def test_get_service_last_accessed_details_failure(event_loop):
@@ -56,13 +47,11 @@ def test_get_service_last_accessed_details_failure(event_loop):
     ]
     aar = AccessAdvisorRetriever()
     with pytest.raises(AccessAdvisorError):
-        aa_data = event_loop.run_until_complete(
-            aar._get_service_last_accessed_details(iam_client, "abc123")
-        )
+        _ = event_loop.run_until_complete(aar._get_service_last_accessed_details(iam_client, "abc123"))
 
 
 @pytest.mark.parametrize(
-    "arn,expected",
+    ("arn", "expected"),
     [
         ("arn:aws:iam::123456789012:role/roleName", "123456789012"),  # Role ARN
         (
@@ -79,15 +68,13 @@ def test_get_account_from_arn(arn, expected):
 
 
 @pytest.mark.parametrize(
-    "service_last_accessed,expected",
+    ("service_last_accessed", "expected"),
     [
         (
             # datetime object for LastAuthenticated
             {
                 "ServiceName": "AWS Lambda",
-                "LastAuthenticated": datetime.datetime(
-                    2020, 4, 12, 15, 30, tzinfo=datetime.timezone.utc
-                ),
+                "LastAuthenticated": datetime.datetime(2020, 4, 12, 15, 30, tzinfo=datetime.timezone.utc),
                 "ServiceNamespace": "lambda",
                 "LastAuthenticatedEntity": "arn:aws:iam::123456789012:user/admin",
                 "TotalAuthenticatedEntities": 6,
@@ -125,7 +112,7 @@ def test_transform_result(service_last_accessed, expected):
 
 
 @pytest.mark.parametrize(
-    "arn,data,expected",
+    ("arn", "data", "expected"),
     [
         # Empty input data
         (
@@ -162,20 +149,16 @@ def test_transform_result(service_last_accessed, expected):
         ),
     ],
 )
-@patch("aardvark.retrievers.access_advisor.boto3_cached_conn")
+@patch("aardvark.retrievers.access_advisor.retriever.boto3_cached_conn")
 def test_run(mock_boto3_cached_conn, event_loop, arn, data, expected):
     mock_iam_client = MagicMock()
-    mock_iam_client.generate_service_last_accessed_details.return_value = {
-        "JobId": "abc123"
-    }
+    mock_iam_client.generate_service_last_accessed_details.return_value = {"JobId": "abc123"}
     mock_iam_client.get_service_last_accessed_details.return_value = {
         "JobStatus": "COMPLETED",
         "ServicesLastAccessed": [
             {
                 "ServiceName": "AWS Lambda",
-                "LastAuthenticated": datetime.datetime(
-                    2020, 4, 12, 15, 30, tzinfo=datetime.timezone.utc
-                ),
+                "LastAuthenticated": datetime.datetime(2020, 4, 12, 15, 30, tzinfo=datetime.timezone.utc),
                 "ServiceNamespace": "lambda",
                 "LastAuthenticatedEntity": "arn:aws:iam::123456789012:user/admin",
                 "TotalAuthenticatedEntities": 6,
@@ -184,18 +167,14 @@ def test_run(mock_boto3_cached_conn, event_loop, arn, data, expected):
     }
     mock_boto3_cached_conn.return_value = mock_iam_client
     aar = AccessAdvisorRetriever()
-    result = event_loop.run_until_complete(
-        aar.run("arn:aws:iam::123456789012:user/admin", data)
-    )
+    result = event_loop.run_until_complete(aar.run("arn:aws:iam::123456789012:user/admin", data))
     assert result["access_advisor"]
     assert result == expected
 
 
-@pytest.mark.parametrize("arn,data,expected", [("arn", {}, {})])
-@patch("aardvark.retrievers.access_advisor.boto3_cached_conn")
-def test_run_missing_arn(
-    mock_boto3_cached_conn, event_loop, arn, data, expected
-):
+@pytest.mark.parametrize(("arn", "data", "expected"), [("arn", {}, {})])
+@patch("aardvark.retrievers.access_advisor.retriever.boto3_cached_conn")
+def test_run_missing_arn(mock_boto3_cached_conn, event_loop, arn, data, expected):
     mock_iam_client = MagicMock()
     mock_iam_client.exceptions.NoSuchEntityException = Exception
     mock_iam_client.generate_service_last_accessed_details.side_effect = (
@@ -203,7 +182,5 @@ def test_run_missing_arn(
     )
     mock_boto3_cached_conn.return_value = mock_iam_client
     aar = AccessAdvisorRetriever()
-    result = event_loop.run_until_complete(
-        aar.run("arn:aws:iam::123456789012:user/admin", {})
-    )
+    result = event_loop.run_until_complete(aar.run("arn:aws:iam::123456789012:user/admin", {}))
     assert result == expected

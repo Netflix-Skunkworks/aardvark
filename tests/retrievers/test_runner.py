@@ -95,9 +95,7 @@ async def test_results_loop(runner, mock_retriever):
     return_value=[{"Arn": "user1"}, {"Arn": "user2"}],
 )
 @pytest.mark.asyncio
-async def test_get_arns_for_account(
-    mock_list_users, mock_list_roles, mock_boto3_cached_conn, runner
-):
+async def test_get_arns_for_account(mock_list_users, mock_list_roles, mock_boto3_cached_conn, runner):
     paginator = MagicMock()
     paginator.paginate.side_effect = (
         [{"Policies": [{"Arn": "policy1"}]}, {"Policies": [{"Arn": "policy2"}]}],
@@ -149,9 +147,7 @@ async def test_get_swag_accounts():
     result = await runner._get_swag_accounts()
     assert result == swag_response
     runner.swag.get_all.assert_called_with("mock swag filter")
-    runner.swag.get_service_enabled.assert_called_with(
-        "glowcloud", accounts_list={"foo": "bar"}
-    )
+    runner.swag.get_service_enabled.assert_called_with("glowcloud", accounts_list={"foo": "bar"})
 
 
 @pytest.mark.asyncio
@@ -171,9 +167,7 @@ async def test_queue_all_accounts(runner):
     account_queue = asyncio.Queue()
     runner.account_queue = account_queue
     runner._get_swag_accounts = AsyncMock()
-    runner._get_swag_accounts.return_value = [
-        {"id": account_id} for account_id in expected_account_ids
-    ]
+    runner._get_swag_accounts.return_value = [{"id": account_id} for account_id in expected_account_ids]
     await runner._queue_all_accounts()
     for account_id in expected_account_ids:
         assert account_queue.get_nowait() == account_id

@@ -7,6 +7,7 @@ from aardvark.config import settings
 
 init_logging()
 
+
 @pytest.fixture(scope="session", autouse=True)
 def set_test_settings():
     settings.configure(FORCE_ENV_FOR_DYNACONF="testing")
@@ -18,7 +19,7 @@ def temp_config_file(tmp_path):
     return str(config_path)
 
 
-@pytest.fixture(autouse=True, scope="function")
+@pytest.fixture(autouse=True)
 def patch_config(monkeypatch, tmp_path):
     db_path = tmp_path / "aardvark-test.db"
     db_uri = f"sqlite:///{db_path}"
