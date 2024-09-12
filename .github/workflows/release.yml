@@ -6,18 +6,18 @@ on:
       - develop
 
 jobs:
-#  on-failure:
-#    runs-on: ubuntu-latest
-#    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
-#    steps:
-#      - run: echo 'The triggering workflow failed'
   package:
     name: Build package
-#    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Fetch all commits and tags to make sure the version gets set right by hatch-vcs.
+          # This should be temporary; once these changes are merged into the primary branch it can
+          # probably be removed.
+          fetch-depth: 0
+          fetch-tags: true
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -36,7 +36,6 @@ jobs:
 
 #  pypi-publish:
 #    name: Upload release to PyPI
-#    #    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 #    runs-on: ubuntu-latest
 #    environment:
 #      name: release
@@ -54,11 +53,12 @@ jobs:
 
   pypi-test-publish:
     name: Upload release to TestPyPI
-#    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     needs:
       - package
-    environment: release
+    environment:
+      name: release
+      url: https://test.pypi.org/p/aardvark
     permissions:
       id-token: write
     steps:
