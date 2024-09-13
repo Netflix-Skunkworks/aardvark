@@ -18,7 +18,7 @@ from swag_client.backend import SWAGManager
 from swag_client.exceptions import InvalidSWAGDataException
 from swag_client.util import parse_swag_config_options
 
-from aardvark import create_app, db
+from aardvark.app import create_app, db
 from aardvark.updater import AccountToUpdate
 
 try:               # Python 2
@@ -402,7 +402,7 @@ class GunicornServer(Command):
 
         app = WSGIApplication()
 
-        app.app_uri = 'aardvark:create_app()'
+        app.app_uri = 'aardvark.app:create_app()'
         return app.run()
 
 

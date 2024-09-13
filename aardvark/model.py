@@ -9,7 +9,7 @@ import sqlalchemy.exc
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import ForeignKey
 
-from aardvark import db
+from aardvark.app import db
 from aardvark.utils.sqla_regex import String
 
 

@@ -45,7 +45,7 @@ import tempfile
 
 import unittest
 
-from aardvark import manage
+from aardvark.app import manage
 import pexpect
 
 # These are fast command line script interactions, eight seconds is forever.
