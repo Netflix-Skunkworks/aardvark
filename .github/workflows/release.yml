@@ -5,10 +5,9 @@ on:
     types:
       - published
   push:
-    tags:
-      - '*'
     branches:
-      - gh-actions
+      - main
+      - gh-actions  # TODO: remove before merging PR
 
 jobs:
   package:
