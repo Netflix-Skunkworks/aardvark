@@ -1,15 +1,8 @@
-# ensure absolute import for python3
-from __future__ import absolute_import
-
 import os
-try:
-    import queue as Queue  # Queue renamed to queue in py3
-except ModuleNotFoundError:
-    import Queue
+import queue
 import re
 import threading
 
-import better_exceptions # noqa
 from blinker import Signal
 from bunch import Bunch
 from flask import current_app
@@ -18,22 +11,12 @@ from swag_client.backend import SWAGManager
 from swag_client.exceptions import InvalidSWAGDataException
 from swag_client.util import parse_swag_config_options
 
-from aardvark import create_app, db
+from aardvark.app import create_app, db
 from aardvark.updater import AccountToUpdate
-
-try:               # Python 2
-    raw_input
-except NameError:  # Python 3
-    raw_input = input
-
-try:               # Python 2
-    unicode
-except NameError:  # Python 3
-    unicode = str
 
 manager = Manager(create_app)
 
-ACCOUNT_QUEUE = Queue.Queue()
+ACCOUNT_QUEUE = queue.Queue()
 DB_LOCK = threading.Lock()
 QUEUE_LOCK = threading.Lock()
 UPDATE_DONE = False
@@ -147,9 +130,9 @@ def create_db():
 # All of these default to None rather than the corresponding DEFAULT_* values
 # so we can tell whether they were passed or not. We don't prompt for any of
 # the options that were passed as parameters.
-@manager.option('-a', '--aardvark-role', dest='aardvark_role_param', type=unicode)
-@manager.option('-b', '--swag-bucket', dest='bucket_param', type=unicode)
-@manager.option('-d', '--db-uri', dest='db_uri_param', type=unicode)
+@manager.option('-a', '--aardvark-role', dest='aardvark_role_param', type=str)
+@manager.option('-b', '--swag-bucket', dest='bucket_param', type=str)
+@manager.option('-d', '--db-uri', dest='db_uri_param', type=str)
 @manager.option('--num-threads', dest='num_threads_param', type=int)
 @manager.option('--no-prompt', dest='no_prompt', action='store_true', default=False)
 def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, no_prompt):
@@ -202,10 +185,10 @@ def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, n
             write_swag = True
         else:
             print('\nAardvark can use SWAG to look up accounts. See {repo_url}'.format(repo_url=SWAG_REPO_URL))
-            use_swag = raw_input('Do you use SWAG to track accounts? [yN]: ')
+            use_swag = input('Do you use SWAG to track accounts? [yN]: ')
             if len(use_swag) > 0 and 'yes'.startswith(use_swag.lower()):
                 bucket_prompt = 'SWAG_BUCKET [{default}]: '.format(default=DEFAULT_SWAG_BUCKET)
-                bucket = raw_input(bucket_prompt) or DEFAULT_SWAG_BUCKET
+                bucket = input(bucket_prompt) or DEFAULT_SWAG_BUCKET
                 write_swag = True
             else:
                 write_swag = False
@@ -214,9 +197,9 @@ def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, n
         db_uri_prompt = 'DATABASE URI [{default}]: '.format(default=default_db_uri)
         num_threads_prompt = '# THREADS [{default}]: '.format(default=DEFAULT_NUM_THREADS)
 
-        aardvark_role = aardvark_role_param or raw_input(aardvark_role_prompt) or DEFAULT_AARDVARK_ROLE
-        db_uri = db_uri_param or raw_input(db_uri_prompt) or default_db_uri
-        num_threads = num_threads_param or raw_input(num_threads_prompt) or DEFAULT_NUM_THREADS
+        aardvark_role = aardvark_role_param or input(aardvark_role_prompt) or DEFAULT_AARDVARK_ROLE
+        db_uri = db_uri_param or input(db_uri_prompt) or default_db_uri
+        num_threads = num_threads_param or input(num_threads_prompt) or DEFAULT_NUM_THREADS
 
     log = """LOG_CFG = {
     'version': 1,
@@ -268,8 +251,8 @@ def config(aardvark_role_param, bucket_param, db_uri_param, num_threads_param, n
         filedata.write(log)
 
 
-@manager.option('-a', '--accounts', dest='accounts', type=unicode, default='all')
-@manager.option('-r', '--arns', dest='arns', type=unicode, default='all')
+@manager.option('-a', '--accounts', dest='accounts', type=str, default='all')
+@manager.option('-r', '--arns', dest='arns', type=str, default='all')
 def update(accounts, arns):
     """
     Asks AWS for new Access Advisor information.
@@ -402,7 +385,7 @@ class GunicornServer(Command):
 
         app = WSGIApplication()
 
-        app.app_uri = 'aardvark:create_app()'
+        app.app_uri = 'aardvark.app:create_app()'
         return app.run()
 
 

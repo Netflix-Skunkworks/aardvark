@@ -1,4 +1,4 @@
-Aardvark
+Aardvark - Multi-Account AWS IAM Access Advisor API
 ========
 [![NetflixOSS Lifecycle](https://img.shields.io/osslifecycle/Netflix/osstracker.svg)]()
 [![Discord chat](https://img.shields.io/discord/754080763070382130?logo=discord)](https://discord.gg/9kwMWa6)

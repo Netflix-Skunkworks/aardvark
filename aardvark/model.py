@@ -1,6 +1,3 @@
-#ensure absolute import for python3
-from __future__ import absolute_import
-
 import datetime
 
 from flask import current_app
@@ -9,7 +6,7 @@ import sqlalchemy.exc
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import ForeignKey
 
-from aardvark import db
+from aardvark.app import db
 from aardvark.utils.sqla_regex import String
 
 
