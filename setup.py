@@ -25,24 +25,23 @@ with open(os.path.join(ROOT, "aardvark", "__about__.py")) as f:
 
 
 install_requires = [
-    'requests==2.31.0',
-    'better_exceptions==0.1.7',
-    'blinker~=1.4',
-    'Bunch==1.0.1',
+    'requests',
+    'better_exceptions',
+    'blinker',
+    'Bunch',
     'Flask-SQLAlchemy>=2.5',
     'cloudaux>=1.8.0',
-    'Flask==1.0.2',
-    'Jinja2==3.0.3',
-    'Flask-RESTful==0.3.5',
-    'Flask-Script==2.0.5',
-    'flasgger==0.9.5',
-    'gunicorn==19.7.1',
-    'itsdangerous==1.1.0',
-    'psycopg2-binary~=2.9.3',
-    'pytz==2017.2',
-    'swag-client==0.4.6',
-    'tqdm==4.40.0',
-    'deepdiff==3.3.0'  # Pinning to last py2 compatible version. Needed for swag-client.
+    'Flask',
+    'Jinja2',
+    'Flask-RESTful',
+    'Flask-Script',
+    'flasgger',
+    'gunicorn',
+    'itsdangerous',
+    'psycopg2-binary',
+    'pytz',
+    'swag-client',
+    'tqdm',
 ]
 
 tests_require = [
