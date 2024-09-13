@@ -21,6 +21,8 @@ log = logging.getLogger("aardvark")
 class AccessAdvisorRetriever(RetrieverPlugin):
     def __init__(self, alternative_config: DynaconfDict | None = None):
         super().__init__("access_advisor", alternative_config=alternative_config)
+        self.max_retries = self.config.get("retrievers.access_advisor.max_retries", 10)
+        self.backoff_base = self.config.get("retrievers.access_advisor.retry_backoff_base", 2)
 
     async def _generate_service_last_accessed_details(self, iam_client, arn):
         """Call IAM API to create an Access Advisor job."""
@@ -30,14 +32,15 @@ class AccessAdvisorRetriever(RetrieverPlugin):
     async def _get_service_last_accessed_details(self, iam_client, job_id):
         """Retrieve Access Advisor job results. Do an exponential backoff if the job is not complete."""
         attempts = 0
-        while attempts < self.config.get("last_accessed_api_retries", 10):
+        while attempts < self.max_retries:
             details = await sync_to_async(iam_client.get_service_last_accessed_details)(JobId=job_id)
             match details.get("JobStatus"):
                 case "COMPLETED":
                     return details
                 case "IN_PROGRESS":
                     # backoff sleep and try again
-                    await asyncio.sleep(2**attempts)
+                    await asyncio.sleep(self.backoff_base**attempts)
+                    attempts += 1
                     continue
                 case _:
                     message = f"Access Advisor job failed: {details.get('Error') or 'no error details provided'}"

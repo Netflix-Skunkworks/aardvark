@@ -34,6 +34,7 @@ def test_get_service_last_accessed_details(event_loop):
         },
     ]
     aar = AccessAdvisorRetriever()
+    aar.backoff_base = 0.1
     aa_data = event_loop.run_until_complete(aar._get_service_last_accessed_details(iam_client, "abc123"))
     assert aa_data["ServicesLastAccessed"][0]["ServiceName"] == "AWS Lambda"
     assert aa_data["ServicesLastAccessed"][0]["LastAuthenticatedEntity"] == "arn:aws:iam::123456789012:user/admin"
@@ -46,8 +47,28 @@ def test_get_service_last_accessed_details_failure(event_loop):
         {"JobStatus": "FAILED", "Error": "Oh no!"},
     ]
     aar = AccessAdvisorRetriever()
-    with pytest.raises(AccessAdvisorError):
+    aar.backoff_base = 0.1
+    with pytest.raises(AccessAdvisorError) as e:
         _ = event_loop.run_until_complete(aar._get_service_last_accessed_details(iam_client, "abc123"))
+    assert str(e.value) == "Access Advisor job failed: Oh no!"
+
+
+def test_get_service_last_accessed_details_too_many_retries(event_loop):
+    iam_client = MagicMock()
+    iam_client.get_service_last_accessed_details.side_effect = [
+        {"JobStatus": "IN_PROGRESS"},
+        {"JobStatus": "IN_PROGRESS"},
+        {"JobStatus": "IN_PROGRESS"},
+        {"JobStatus": "IN_PROGRESS"},
+        {"JobStatus": "IN_PROGRESS"},
+        {"JobStatus": "IN_PROGRESS"},
+    ]
+    aar = AccessAdvisorRetriever()
+    aar.max_retries = 5
+    aar.backoff_base = 0.1
+    with pytest.raises(AccessAdvisorError) as e:
+        _ = event_loop.run_until_complete(aar._get_service_last_accessed_details(iam_client, "abc123"))
+    assert str(e.value) == "Access Advisor job failed: exceeded max retries"
 
 
 @pytest.mark.parametrize(

@@ -60,7 +60,7 @@ class SQLAlchemyPersistence(PersistencePlugin):
         return item
 
     @contextmanager
-    def session_scope(self, session: session_type = None):
+    def session_scope(self, session: session_type = None) -> Session:
         """Provide a transactional scope around a series of operations."""
         if not session:
             log.debug("creating new SQLAlchemy DB session")
@@ -216,7 +216,7 @@ class SQLAlchemyPersistence(PersistencePlugin):
     def create_or_update_advisor_data(
         self,
         item_id: int,
-        last_authenticated: datetime.datetime,
+        last_authenticated: int,
         service_name: str,
         service_namespace: str,
         last_authenticated_entity: str,

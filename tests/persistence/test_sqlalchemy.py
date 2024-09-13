@@ -35,13 +35,11 @@ ADVISOR_DATA = {
 @pytest.fixture
 def temp_sqlite_db_config():
     db_uri = "sqlite:///:memory:"
-    custom_config = DynaconfDict(
+    return DynaconfDict(
         {
-            "sqlalchemy": {"database_uri": str(db_uri)},
+            "sqlalchemy_database_uri": db_uri,
         }
     )
-    custom_config["sqlalchemy_database_uri"] = db_uri
-    return custom_config
 
 
 def test_sqlalchemypersistence():
@@ -100,9 +98,14 @@ def test_create_iam_object(temp_sqlite_db_config):
 
 
 def test_create_or_update_advisor_data(temp_sqlite_db_config):
+    from aardvark.persistence.sqlalchemy.models import AdvisorData
+
     sap = SQLAlchemyPersistence(alternative_config=temp_sqlite_db_config)
-    update_timestamp = datetime.datetime.now()
-    original_timestamp = update_timestamp - datetime.timedelta(days=10)
+    now = datetime.datetime.now()
+    # 10 days ago
+    original_timestamp = int((now - datetime.timedelta(days=10)).timestamp() * 1000)
+    # 5 days ago
+    update_timestamp = int((now - datetime.timedelta(days=5)).timestamp() * 1000)
 
     # Create advisor data record
     with sap.session_scope() as session:
@@ -116,17 +119,40 @@ def test_create_or_update_advisor_data(temp_sqlite_db_config):
             session=session,
         )
 
-    # Update advisor data record with new timestamp
+    with sap.session_scope() as session:
+        record: AdvisorData = session.query(AdvisorData).filter(AdvisorData.id == 1).scalar()
+
+    assert record
+    assert record.item_id == 1
+    assert record.lastAuthenticated == int((now - datetime.timedelta(days=10)).timestamp() * 1000)
+    assert record.lastAuthenticatedEntity == "arn:aws:iam::123456789012:role/PatrickStar"
+    assert record.serviceName == "Aardvark Test"
+    assert record.serviceNamespace == "adv"
+    assert record.totalAuthenticatedEntities == 999
+
+    # Update advisor data record with new timestamp, plus update service name, last authenticated entity, and total
+    # authenticated entities
     with sap.session_scope() as session:
         sap.create_or_update_advisor_data(
             1,
             update_timestamp,
-            "Aardvark Test",
+            "Aardvark Test v2",
             "adv",
-            "arn:aws:iam::123456789012:role/PatrickStar",
-            999,
+            "arn:aws:iam::123456789012:role/SquidwardTentacles",
+            1000,
             session=session,
         )
+
+    with sap.session_scope() as session:
+        record: AdvisorData = session.query(AdvisorData).filter(AdvisorData.id == 1).scalar()
+
+    assert record
+    assert record.item_id == 1
+    assert record.lastAuthenticated == int((now - datetime.timedelta(days=5)).timestamp() * 1000)
+    assert record.lastAuthenticatedEntity == "arn:aws:iam::123456789012:role/SquidwardTentacles"
+    assert record.serviceName == "Aardvark Test v2"
+    assert record.serviceNamespace == "adv"
+    assert record.totalAuthenticatedEntities == 1000
 
 
 def test_get_or_create_iam_object(temp_sqlite_db_config):
