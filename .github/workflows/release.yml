@@ -7,7 +7,6 @@ on:
   push:
     branches:
       - main  # publish pre-release packages on every push to main
-      - gh-actions  # TODO: remove before merging PR
 
 jobs:
   package:
