@@ -36,22 +36,24 @@ jobs:
           name: python-package-distributions
           path: dist/
 
-#  pypi-publish:
-#    name: Upload release to PyPI
-#    runs-on: ubuntu-latest
-#    environment:
-#      name: release
-#      url: https://pypi.org/p/aardvark
-#    permissions:
-#      id-token: write
-#    steps:
-#      - name: Download all the dists
-#        uses: actions/download-artifact@v4
-#        with:
-#          name: python-package-distributions
-#          path: dist/
-#      - name: Publish package distributions to PyPI
-#        uses: pypa/gh-action-pypi-publish@release/v1
+  pypi-publish:
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    needs:
+      - package
+    environment:
+      name: release
+      url: https://pypi.org/p/aardvark
+    permissions:
+      id-token: write
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
 
   pypi-test-publish:
     name: Upload release to TestPyPI
