@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os.path
 import logging
 import sys
@@ -9,12 +11,12 @@ from flask_sqlalchemy import SQLAlchemy
 from flask import Flask
 from flasgger import Swagger
 
-from aardvark.view import mod as advisor_bp  # noqa
-
 if TYPE_CHECKING:
     from flask import Config
 
 db = SQLAlchemy()
+
+from aardvark.view import mod as advisor_bp  # noqa
 
 BLUEPRINTS = [
     advisor_bp

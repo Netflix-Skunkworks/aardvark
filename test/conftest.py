@@ -23,10 +23,10 @@ def mock_database(app_config):
     """Yield an instance of flask_sqlalchemy.SQLAlchemy associated with the base model class used in aardvark.model.
     This is almost certainly not safe for parallel/multi-threaded use.
     """
-    from aardvark import db
+    from aardvark.app import db
     mock_db = SQLAlchemy(model_class=db.Model)
 
-    from aardvark import create_app
+    from aardvark.app import create_app
     app = create_app(config_override=app_config)
     with app.app_context():
         mock_db.create_all()
