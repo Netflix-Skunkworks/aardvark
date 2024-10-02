@@ -1,12 +1,18 @@
+from __future__ import annotations
+
 import os.path
 import logging
+import sys
 from logging import DEBUG, Formatter, StreamHandler
 from logging.config import dictConfig
-import sys
+from typing import TYPE_CHECKING
 
 from flask_sqlalchemy import SQLAlchemy
 from flask import Flask
 from flasgger import Swagger
+
+if TYPE_CHECKING:
+    from flask import Config
 
 db = SQLAlchemy()
 
@@ -19,16 +25,19 @@ BLUEPRINTS = [
 API_VERSION = '1'
 
 
-def create_app():
+def create_app(config_override: Config = None):
     app = Flask(__name__, static_url_path='/static')
     Swagger(app)
 
-    path = _find_config()
-    if not path:
-        print('No config')
-        app.config.from_pyfile('_config.py')
+    if config_override:
+        app.config.from_mapping(config_override)
     else:
-        app.config.from_pyfile(path)
+        path = _find_config()
+        if not path:
+            print('No config')
+            app.config.from_pyfile('_config.py')
+        else:
+            app.config.from_pyfile(path)
 
     # For ELB and/or Eureka
     @app.route('/healthcheck')

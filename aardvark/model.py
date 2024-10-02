@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 
 from flask import current_app
@@ -69,50 +71,68 @@ class AdvisorData(db.Model):
     @staticmethod
     def create_or_update(item_id, lastAuthenticated, serviceName, serviceNamespace, lastAuthenticatedEntity,
                          totalAuthenticatedEntities):
+        # Truncate service name and namespace to make sure they fit in our DB fields
         serviceName = serviceName[:128]
         serviceNamespace = serviceNamespace[:64]
-        item = None
+
+        # Query the database for an existing entry that matches this item ID and service namespace. If there is none,
+        # instantiate an empty AdvisorData
+        item: AdvisorData | None = None
         try:
-            item = AdvisorData.query.filter(AdvisorData.item_id == item_id).filter(AdvisorData.serviceNamespace ==
-                                                                                   serviceNamespace).scalar()
+            item = db.session.query(AdvisorData).filter(
+                AdvisorData.item_id == item_id,
+                AdvisorData.serviceNamespace == serviceNamespace,
+            ).scalar()
         except sqlalchemy.exc.SQLAlchemyError as e:
-            current_app.logger.error('Database error: {} item_id: {} serviceNamespace: {}'.format(e.args[0], item_id,
-                                     serviceNamespace)) #exception.messsage not supported in py3 e.args[0] replacement
+            current_app.logger.error(
+                'Database error: %s item_id: %s serviceNamespace: %s',
+                str(e),
+                item_id,
+                serviceNamespace
+            )
 
         if not item:
-            item = AdvisorData(item_id=item_id,
-                               lastAuthenticated=lastAuthenticated,
-                               serviceName=serviceName,
-                               serviceNamespace=serviceNamespace,
-                               lastAuthenticatedEntity=lastAuthenticatedEntity,
-                               totalAuthenticatedEntities=totalAuthenticatedEntities)
-            db.session.add(item)
-            return
+            item = AdvisorData()
 
-        if lastAuthenticated > item.lastAuthenticated:
-            item.lastAuthenticated = lastAuthenticated
-            db.session.add(item)
+        # Save existing lastAuthenticated timestamp for later comparison
+        existingLastAuthenticated = item.lastAuthenticated or 0
 
-        elif lastAuthenticated < item.lastAuthenticated:
-            """
-            lastAuthenticated is obtained by calling get_service_last_accessed_details() method of the boto3 iam client.
-            When there is no AA data about a service, the lastAuthenticated key is missing from the returned dictionary.
-            This is perfectly valid, either because the service in question was not accessed in the past 365 days or
-            the entity granting  access to it was created recently enough that no AA data is available yet (it can take up to
-            4 hours for this to happen).
-            When this happens, the AccountToUpdate._get_job_results() method will set lastAuthenticated to 0.
-            Usually we don't want to persist such an entity, with one exception: there's already a recorded, non-zero lastAuthenticated
-            timestamp persisted for this item. That means the service was accessed at some point in time, but now more than 365 passed since
-            the last access, so AA no longer returns a timestamp for it.
-            """
+        # Set all fields to the provided values. SQLAlchemy will only mark the model instance as modified if the actual
+        # values have changed, so this will be a no-op if the values are all the same.
+        item.item_id = item_id
+        item.lastAuthenticated = lastAuthenticated
+        item.lastAuthenticatedEntity = lastAuthenticatedEntity
+        item.serviceName = serviceName
+        item.serviceNamespace = serviceNamespace
+        item.totalAuthenticatedEntities = totalAuthenticatedEntities
+
+        # When there is no AA data about a service, the lastAuthenticated key is missing from the returned dictionary.
+        # This is perfectly valid, either because the service in question was not accessed in the past 365 days or
+        # the entity granting  access to it was created recently enough that no AA data is available yet (it can take
+        # up to 4 hours for this to happen).
+        #
+        # When this happens, the AccountToUpdate._get_job_results() method will set lastAuthenticated to 0. Usually
+        # we don't want to persist such an entity, with one exception: there's already a recorded, non-zero
+        # lastAuthenticated timestamp persisted for this item. That means the service was accessed at some point in
+        # time, but now more than 365 passed since the last access, so AA no longer returns a timestamp for it.
+        if lastAuthenticated < existingLastAuthenticated:
             if lastAuthenticated == 0:
-                current_app.logger.warn('Previously seen object not accessed in the past 365 days '
-                                        '(got null lastAuthenticated from AA). Setting to 0. '
-                                        'Object {} service {} previous timestamp {}'.format(item.item_id, item.serviceName, item.lastAuthenticated))
-                item.lastAuthenticated = 0
-                db.session.add(item)
+                current_app.logger.info(
+                    'Previously seen object not accessed in the past 365 days (got null lastAuthenticated from AA). '
+                    'Setting to 0. Object %s service %s previous timestamp %d',
+                    item.item_id,
+                    item.serviceName,
+                    item.lastAuthenticated
+                )
             else:
-                current_app.logger.error("Received an older time than previously seen for object {} service {} ({la} < {ila})!".format(item.item_id,
-                                                                                                                                       item.serviceName,
-                                                                                                                                       la=lastAuthenticated,
-                                                                                                                                       ila=item.lastAuthenticated))
+                current_app.logger.warning(
+                    "Received an older time than previously seen for object %s service %s (%d < %d)!",
+                    item.item_id,
+                    item.serviceName,
+                    lastAuthenticated,
+                    existingLastAuthenticated
+                )
+                item.lastAuthenticated = existingLastAuthenticated
+
+        # Add the updated item to the session so it gets committed with everything else
+        db.session.add(item)
