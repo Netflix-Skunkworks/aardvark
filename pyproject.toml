@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs", "hatch-build-scripts"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aardvark"
+description = "A multi-account AWS IAM Access Advisor API"
+readme = "README.md"
+authors = [{name = "Netflix", email = "aardvark-maintainers@netflix.com"}]
+license = {file = "LICENSE"}
+requires-python = ">=3.10"
+dependencies = [
+    "asgiref",
+    "blinker",
+    "click",
+    "cloudaux",
+    "confuse",
+    "dynaconf",
+    "flasgger",
+    "flask",
+    "SQLAlchemy",
+    "setuptools",
+    "swag_client",
+    "toml",
+]
+dynamic = ["version"]
+
+[project.scripts]
+aardvark = "aardvark.manage:cli"
+
+[project.urls]
+repository = "https://github.com/Netflix-Skunkworks/aardvark"
+
+[tool.hatch.build]
+include = ["aardvark", "README.md", "LICENSE", "aardvark/config_default.yaml"]
+
+[[tool.hatch.build.hooks.build-scripts.scripts]]
+commands = [
+    # the version file is updated as part of the build. this command tells git to ignore it.
+    # if you actually need to update the version file, you'll need to run the inverse of this command:
+    #   git update-index --no-skip-worktree aardvark/__version__.py
+    "git update-index --skip-worktree aardvark/__version__.py",
+]
+artifacts = []
+
+[tool.hatch.build.hooks.vcs]
+version-file = "aardvark/__version__.py"
+
+[tool.hatch.envs.test]
+extra-dependencies = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[[tool.hatch.envs.test.matrix]]
+python = ["3.10", "3.11"]
+
+[tool.hatch.version]
+source = "vcs"
+scheme = "standard"
+
+[tool.hatch.version.raw-options]
+version_scheme = "python-simplified-semver"
+local_scheme = "no-local-version"
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/*" = ["ARG001", "ARG002", "PLR2004", "S101", "S105", "SLF001"]

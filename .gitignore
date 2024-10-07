@@ -31,6 +31,9 @@ wheels/
 .installed.cfg
 *.egg
 
+# Auto generated during builds
+aardvark/__version__.py
+
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
@@ -106,4 +109,5 @@ ENV/
 .mypy_cache/
 
 # config
-config.py
+.secrets.yaml
+settings.local.yaml.bak

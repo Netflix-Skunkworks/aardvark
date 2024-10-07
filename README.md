@@ -3,46 +3,71 @@ Aardvark - Multi-Account AWS IAM Access Advisor API
 [![NetflixOSS Lifecycle](https://img.shields.io/osslifecycle/Netflix/osstracker.svg)]()
 [![Discord chat](https://img.shields.io/discord/754080763070382130?logo=discord)](https://discord.gg/9kwMWa6)
 
-<img align="center" alt="Aardvark Logo" src="docs/images/aardvark_logo.jpg" width="10%" display="block">
+![Aardvark Logo](docs/images/aardvark_logo_small.png)
 
 Aardvark is a multi-account AWS IAM Access Advisor API (and caching layer).
 
-## Install:
+## New in `v1.0.0`
 
-Ensure that you have Python 3.6 or later. Python 2 is no longer supported.
+⚠️ Breaking change 
 
-```bash
-git clone https://github.com/Netflix-Skunkworks/aardvark.git
-cd aardvark
-python3 -m venv env
-. env/bin/activate
-python setup.py develop
+✨ Enhancement
+
+- ⚠️ Upgrade to Python 3.10+
+- ⚠️ New configuration format
+- ✨ Pluggable persistence layer
+- ✨ Pluggable retrievers
+
+## Install
+
+Ensure that you have Python 3.10 or later.
+
+Use pip install Aardvark:
+
+```shell
+pip install aardvark
 ```
 
-### Known Dependencies
- - libpq-dev
+Alternatively, clone the repository and install a development version:
+
+```shell
+git clone https://github.com/Netflix-Skunkworks/aardvark.git
+cd aardvark
+python3 -m venv venv
+source venv/bin/activate
+pip install -e .
+```
+
+To run the test suite, you'll need to install the test requirements:
+
+```shell
+pip install -r requirements-test.txt
+pytest test/
+```
 
 ## Configure Aardvark
 
 The Aardvark config wizard will guide you through the setup.
-```
-% aardvark config
+```shell
+❯ aardvark config
 
-Aardvark can use SWAG to look up accounts. https://github.com/Netflix-Skunkworks/swag-client
-Do you use SWAG to track accounts? [yN]: no
-ROLENAME: Aardvark
-DATABASE [sqlite:////home/github/aardvark/aardvark.db]:
-# Threads [5]:
+Aardvark can use SWAG to look up accounts. See https://github.com/Netflix-Skunkworks/swag-client
+Do you use SWAG to track accounts? [yN]: N
+Role Name [Aardvark]: Aardvark
+Database URI [sqlite:///aardvark.db]: 
+Worker Count [5]: 5
+Config file location [settings.yaml]: settings.local.yaml
 
->> Writing to config.py
+writing config file to settings.local.yaml
 ```
 - Whether to use [SWAG](https://github.com/Netflix-Skunkworks/swag-client) to enumerate your AWS accounts. (Optional, but useful when you have many accounts.)
 - The name of the IAM Role to assume into in each account.
 - The Database connection string. (Defaults to sqlite in the current working directory. Use RDS Postgres for production.)
+- The number of workers to create.
 
 ## Create the DB tables
 
-```
+```shell
 aardvark create_db
 ```
 
@@ -50,27 +75,95 @@ aardvark create_db
 
 Aardvark needs an IAM Role in each account that will be queried.  Additionally, Aardvark needs to be launched with a role or user which can `sts:AssumeRole` into the different account roles.
 
-AardvarkInstanceProfile:
-- Only create one.
-- Needs the ability to call `sts:AssumeRole` into all of the AardvarkRole's
+### Hub role (`AardvarkInstanceProfile`):
 
-AardvarkRole:
+- Only create one.
+- Needs the ability to call `sts:AssumeRole` into all of the `AardvarkRole`s
+
+Inline policy example:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AssumeSpokeRoles",
+            "Effect": "Allow",
+            "Action": [
+                "sts:assumerole"
+            ],
+            "Resource": [
+                "arn:aws:iam::*:role/AardvarkRole"
+            ]
+        }
+    ]
+}
+```
+
+### Spoke roles (`AardvarkRole`):
+
 - Must exist in every account to be monitored.
 - Must have a trust policy allowing `AardvarkInstanceProfile`.
 - Has these permissions:
+
 ```
 iam:GenerateServiceLastAccessedDetails
 iam:GetServiceLastAccessedDetails
-iam:listrolepolicies
-iam:listroles
+iam:ListRolePolicies
+iam:ListRoles
 iam:ListUsers
 iam:ListPolicies
 iam:ListGroups
 ```
+Assume role policy document example (be sure to replace the account ID with a real one):
 
-So if you are monitoring `n` accounts, you will always need `n+1` roles. (`n` AardvarkRoles and `1` AardvarkInstanceProfile).
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowHubRoleAssume",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::111111111111:role/AardvarkInstanceProfile"
+                ]
+            },
+            "Action": "sts:AssumeRole"
+        }
+    ]
+}
+```
 
-Note: For locally running aardvark, you don't have to take care of the AardvarkInstanceProfile. Instead, just attach a policy which contains "sts:AssumeRole" to the user you are using on the AWS CLI to assume Aardvark Role. Also, the same user should be mentioned in the trust policy of Aardvark Role for proper assignment of the privileges.
+Inline policy example:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "IAMAccess",
+            "Effect": "Allow",
+            "Action": [
+              "iam:GenerateServiceLastAccessedDetails",
+              "iam:GetServiceLastAccessedDetails",
+              "iam:ListRolePolicies",
+              "iam:ListRoles",
+              "iam:ListUsers",
+              "iam:ListPolicies",
+              "iam:ListGroups"
+            ],
+            "Resource": [
+              "*"
+            ]
+        }
+    ]
+}
+```
+
+So if you are monitoring `n` accounts, you will always need `n+1` roles. (one `AardvarkInstanceProfile` and n `AardvarkRole`s).
+
+Note: For locally running aardvark, you don't have to take care of the AardvarkInstanceProfile. Instead, just attach a policy which contains `sts:AssumeRole` to the user you are using on the AWS CLI to assume Aardvark Role. Also, the same user should be mentioned in the trust policy of Aardvark Role for proper assignment of the privileges.
 
 ## Gather Access Advisor Data
 
@@ -80,24 +173,30 @@ You'll likely want to refresh the Access Advisor data regularly.  We recommend r
 
 If you don't have SWAG you can pass comma separated account numbers:
 
-    aardvark update -a 123456789012,210987654321
+    aardvark update -a 123456789012 -a 210987654321
 
 #### With SWAG:
 
 Aardvark can use [SWAG](https://github.com/Netflix-Skunkworks/swag-client) to look up accounts, so you can run against all with:
 
-    aardvark update
+```shell
+aardvark update
+```
 
 or by account name/tag with:
 
-    aardvark update -a dev,test,prod
+```shell
+aardvark update -a dev -a test -a prod
+```
 
 
 ## API
 
 ### Start the API
 
-    aardvark start_api -b 0.0.0.0:5000
+```shell
+FLASK_APP=aardvark flask run -b 0.0.0.0:5000
+```
 
 In production, you'll likely want to have something like supervisor starting the API for you.
 
@@ -106,7 +205,7 @@ In production, you'll likely want to have something like supervisor starting the
 Swagger is available for the API at `<Aardvark_Host>/apidocs/#!`.
 
 Aardvark responds to get/post requests. All results are paginated and pagination can be controlled by passing `count` and/or `page` arguments. Here are a few example queries:
-```bash
+```shell
 curl localhost:5000/api/1/advisors
 curl localhost:5000/api/1/advisors?phrase=SecurityMonkey
 curl localhost:5000/api/1/advisors?arn=arn:aws:iam::000000000000:role/SecurityMonkey&arn=arn:aws:iam::111111111111:role/SecurityMonkey
@@ -143,7 +242,7 @@ Once this file is created, then build the containers and start the services. Aar
 - API Server - This is the HTTP webserver will serve the data. By default, this is listening on [http://localhost:5000/apidocs/#!](http://localhost:5000/apidocs/#!).
 - Collector - This is a daemon that will fetch and cache the data in the local SQL database. This should be run periodically.
 
-```bash
+```shell
 # build the containers
 docker-compose build
 
@@ -153,7 +252,7 @@ docker-compose up
 
 Finally, to clean up the environment
 
-```bash
+```shell
 # bring down the containers
 docker-compose down
 
@@ -209,7 +308,7 @@ if __name__ == "__main__":
 
 This file can now be invoked in the same way as `manage.py`:
 
-```bash
+```shell
 python signals_example.py update -a cool_account
 ```
 
@@ -230,7 +329,3 @@ INFO: Thread #1 FINISHED persisting data for account 123456789012
 |-------|---------|
 | `manage.UpdateAccountThread` | `on_ready`, `on_complete`, `on_failure` |
 | `updater.AccountToUpdate` | `on_ready`, `on_complete`, `on_error`, `on_failure` |
-
-## TODO:
-
-See [TODO](TODO.md)

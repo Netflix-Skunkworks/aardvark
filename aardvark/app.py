@@ -22,11 +22,11 @@ BLUEPRINTS = [
     advisor_bp
 ]
 
-API_VERSION = '1'
+API_VERSION = "1"
 
 
 def create_app(config_override: Config = None):
-    app = Flask(__name__, static_url_path='/static')
+    app = Flask(__name__, static_url_path="/static")
     Swagger(app)
 
     if config_override:
@@ -34,13 +34,13 @@ def create_app(config_override: Config = None):
     else:
         path = _find_config()
         if not path:
-            print('No config')
-            app.config.from_pyfile('_config.py')
+            print("No config")
+            app.config.from_pyfile("_config.py")
         else:
             app.config.from_pyfile(path)
 
     # For ELB and/or Eureka
-    @app.route('/healthcheck')
+    @app.route("/healthcheck")
     def healthcheck():
         """Healthcheck
         Simple healthcheck that indicates the services is up
@@ -49,11 +49,11 @@ def create_app(config_override: Config = None):
           200:
             description: service is up
         """
-        return 'ok'
+        return "ok"
 
     # Blueprints
     for bp in BLUEPRINTS:
-        app.register_blueprint(bp, url_prefix="/api/{0}".format(API_VERSION))
+        app.register_blueprint(bp, url_prefix=f"/api/{API_VERSION}")
 
     # Extensions:
     db.init_app(app)
@@ -64,10 +64,12 @@ def create_app(config_override: Config = None):
 
 def _find_config():
     """Search for config.py in order of preference and return path if it exists, else None"""
-    CONFIG_PATHS = [os.path.join(os.getcwd(), 'config.py'),
-                    '/etc/aardvark/config.py',
-                    '/apps/aardvark/config.py']
-    for path in CONFIG_PATHS:
+    config_paths = [
+        os.path.join(os.getcwd(), "config.py"),
+        "/etc/aardvark/config.py",
+        "/apps/aardvark/config.py",
+    ]
+    for path in config_paths:
         if os.path.exists(path):
             return path
     return None
@@ -75,16 +77,13 @@ def _find_config():
 
 def setup_logging(app):
     if not app.debug:
-        if app.config.get('LOG_CFG'):
+        if app.config.get("LOG_CFG"):
             # initialize the Flask logger (removes all handlers)
-            app.logger
-            dictConfig(app.config.get('LOG_CFG'))
+            dictConfig(app.config.get("LOG_CFG"))
             app.logger = logging.getLogger(__name__)
         else:
             handler = StreamHandler(stream=sys.stderr)
 
-            handler.setFormatter(Formatter(
-                '%(asctime)s %(levelname)s: %(message)s '
-                '[in %(pathname)s:%(lineno)d]'))
-            app.logger.setLevel(app.config.get('LOG_LEVEL', DEBUG))
+            handler.setFormatter(Formatter("%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]"))
+            app.logger.setLevel(app.config.get("LOG_LEVEL", DEBUG))
             app.logger.addHandler(handler)
