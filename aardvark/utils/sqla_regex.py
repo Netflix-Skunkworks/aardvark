@@ -4,6 +4,7 @@ with a support for regular expression operators in Postgres and SQLite.
 """
 
 # courtesy of Xion: http://xion.io/post/code/sqlalchemy-regex-filters.html
+
 import re
 import sqlite3
 

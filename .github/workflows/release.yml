@@ -1,11 +1,12 @@
 name: Publish
 
 on:
+  release:
+    types:
+      - published
   push:
-    tags:
-      - '*'
     branches:
-      - main
+      - main  # publish pre-release packages on every push to main
 
 jobs:
   package:
@@ -20,7 +21,7 @@ jobs:
           # probably be removed.
           fetch-depth: 0
           fetch-tags: true
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
@@ -36,22 +37,24 @@ jobs:
           name: python-package-distributions
           path: dist/
 
-#  pypi-publish:
-#    name: Upload release to PyPI
-#    runs-on: ubuntu-latest
-#    environment:
-#      name: release
-#      url: https://pypi.org/p/aardvark
-#    permissions:
-#      id-token: write
-#    steps:
-#      - name: Download all the dists
-#        uses: actions/download-artifact@v4
-#        with:
-#          name: python-package-distributions
-#          path: dist/
-#      - name: Publish package distributions to PyPI
-#        uses: pypa/gh-action-pypi-publish@release/v1
+  pypi-publish:
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    needs:
+      - package
+    environment:
+      name: release
+      url: https://pypi.org/p/aardvark
+    permissions:
+      id-token: write
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
 
   pypi-test-publish:
     name: Upload release to TestPyPI
